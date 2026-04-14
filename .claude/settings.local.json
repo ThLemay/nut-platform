@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(alembic revision:*)",
+      "Bash(python -m alembic revision --autogenerate -m \"add_owner_organization_to_stock\")",
+      "Bash(docker compose:*)",
+      "Bash(python -m alembic revision --autogenerate -m \"add_credit_config\")",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(python3 -m alembic revision --autogenerate -m \"add_credit_config\")",
+      "Bash(docker exec nut_api:*)",
+      "Bash(docker exec nut_db:*)",
+      "Bash(claude plugins:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(where node:*)",
+      "Bash(where npm:*)",
+      "Bash(where npx:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(xargs grep:*)",
+      "Bash(python -c ':*)"
+    ]
+  }
+}
