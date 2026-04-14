@@ -104,3 +104,29 @@ class TransportSlot(Base):
 
     # Relations
     transport = relationship("Transport", back_populates="slots", foreign_keys=[id_transport])
+
+TRANSITIONS_ORDER = {
+    OrderStatus.brouillon: [OrderStatus.envoyee, OrderStatus.annulee],
+    OrderStatus.envoyee: [OrderStatus.acceptee, OrderStatus.annulee],
+    OrderStatus.acceptee: [OrderStatus.en_cours, OrderStatus.annulee],
+    OrderStatus.en_cours: [
+        OrderStatus.controle_qualite,
+        OrderStatus.en_transit,
+        OrderStatus.annulee,
+    ],
+    OrderStatus.controle_qualite: [
+        OrderStatus.prete,
+        OrderStatus.annulee,
+    ],
+    OrderStatus.prete: [
+        OrderStatus.en_transit,
+        OrderStatus.livree,
+        OrderStatus.annulee,
+    ],
+    OrderStatus.en_transit: [
+        OrderStatus.livree,
+        OrderStatus.annulee,
+    ],
+    OrderStatus.livree: [],
+    OrderStatus.annulee: [],
+}
