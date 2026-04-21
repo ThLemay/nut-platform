@@ -1,0 +1,595 @@
+<!DOCTYPE html><html lang="fr"><head>
+
+
+  <meta charset="utf-8">
+  <title>NUT Platform — Connexion</title>
+  <link rel="stylesheet" href="./colors_and_type.css">
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      background: var(--nut-green-dark);
+      font-family: var(--font-sans);
+      color: var(--fg);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* Subtle brand watermark in the background — the NUT leaf shape, very low opacity */
+    .bg-mark {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg-mark svg {
+      position: absolute;
+      right: -120px;
+      bottom: -80px;
+      width: 620px;
+      height: auto;
+      opacity: 0.045;
+    }
+
+    .login-shell {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      padding: 32px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 28px;
+    }
+
+    .brand {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 4px;
+    }
+    .brand img { height: 38px; width: auto; display: block; }
+
+    .card {
+      background: var(--bg-surface);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0,0,0,0.06);
+      padding: 36px 36px 32px;
+    }
+
+    .card-head { margin-bottom: 24px; }
+    .card-head h1 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--fg);
+      letter-spacing: -0.01em;
+    }
+    .card-head p {
+      margin: 6px 0 0;
+      font-size: 14px;
+      color: var(--fg-muted);
+      line-height: 1.5;
+    }
+
+    form .field + .field { margin-top: 16px; }
+
+    .field label {
+      display: block;
+      font-size: var(--fs-label);
+      font-weight: var(--fw-medium);
+      color: var(--fg-label);
+      margin-bottom: 6px;
+    }
+    .field .input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .field input {
+      width: 100%;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-sans);
+      font-size: var(--fs-base);
+      color: var(--fg);
+      background: #fff;
+      outline: none;
+      transition: border-color var(--dur-fast) var(--ease-out),
+                  box-shadow var(--dur-fast) var(--ease-out);
+    }
+    .field input::placeholder { color: #9CA3AF; }
+    .field input:hover:not(:focus) { border-color: #9CA3AF; }
+    .field input:focus {
+      border-color: var(--nut-green);
+      box-shadow: var(--shadow-focus);
+    }
+    .field.has-error input {
+      border-color: var(--nut-accent-red);
+    }
+    .field.has-error input:focus {
+      box-shadow: 0 0 0 3px rgba(232, 49, 74, 0.15);
+    }
+
+    .field .pw-toggle {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg-muted);
+    }
+    .field .pw-toggle:hover { background: var(--bg-muted); }
+
+    .field-helper-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .field-helper-row a {
+      font-size: 12px;
+      color: var(--nut-green);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .field-helper-row a:hover { text-decoration: underline; }
+
+    .field-error {
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--nut-accent-red);
+      line-height: 1.4;
+    }
+
+    /* Alert — error banner */
+    .alert {
+      display: flex;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: var(--error-bg);
+      border: 1px solid rgba(232, 49, 74, 0.3);
+      margin-bottom: 20px;
+      align-items: flex-start;
+    }
+    .alert-icon {
+      flex-shrink: 0;
+      color: var(--nut-accent-red);
+      margin-top: 1px;
+    }
+    .alert-body {
+      font-size: 13px;
+      color: var(--error-fg);
+      line-height: 1.45;
+    }
+    .alert-body strong { font-weight: 600; }
+
+    /* Remember me */
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 16px;
+      margin-bottom: 24px;
+    }
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 13px;
+      color: var(--fg-label);
+    }
+    .checkbox input {
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--border-input);
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      position: relative;
+      transition: background var(--dur-fast) var(--ease-out),
+                  border-color var(--dur-fast) var(--ease-out);
+    }
+    .checkbox input:hover { border-color: #9CA3AF; }
+    .checkbox input:checked {
+      background: var(--nut-green);
+      border-color: var(--nut-green);
+    }
+    .checkbox input:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 5px;
+      height: 9px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+    .checkbox input:focus-visible {
+      box-shadow: var(--shadow-focus);
+      outline: none;
+    }
+
+    .forgot {
+      font-size: 13px;
+      color: var(--nut-green);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .forgot:hover { text-decoration: underline; }
+
+    /* Submit button */
+    .btn-primary {
+      width: 100%;
+      height: 44px;
+      background: var(--nut-green);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-md);
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background var(--dur-fast) var(--ease-out);
+    }
+    .btn-primary:hover { background: var(--nut-green-dark); }
+    .btn-primary:active { background: var(--nut-green-darker); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary:focus-visible {
+      outline: none;
+      box-shadow: var(--shadow-focus);
+    }
+
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer under card */
+    .footer-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+      color: rgba(255,255,255,0.55);
+      font-size: 12px;
+    }
+    .footer-row a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+    }
+    .footer-row a:hover { color: #fff; text-decoration: underline; }
+    .footer-links { display: flex; gap: 18px; }
+
+    /* Demo hint panel (subtle, bottom-left) */
+    .demo-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.85);
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      max-width: 280px;
+      backdrop-filter: blur(4px);
+    }
+    .demo-hint strong {
+      color: #fff;
+      font-weight: 500;
+      display: block;
+      margin-bottom: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .demo-hint code {
+      font-family: ui-monospace, Menlo, monospace;
+      background: rgba(255,255,255,0.1);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+      color: #fff;
+    }
+
+    @media (max-width: 480px) {
+      .card { padding: 28px 20px; }
+      .login-shell { padding: 20px 16px; }
+      .demo-hint { display: none; }
+      .footer-row { flex-direction: column; gap: 8px; text-align: center; }
+    }
+
+    /* Success state (when auth succeeds) */
+    .success-view {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 20px 0 10px;
+      text-align: center;
+    }
+    .success-view .check {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: var(--status-propre-bg);
+      color: var(--status-propre-fg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .success-view h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--fg); }
+    .success-view p { margin: 0; font-size: 14px; color: var(--fg-muted); }
+
+  </style>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body data-cc-id="cc-1" style="cursor: crosshair; font-size: 4px;">
+
+  <!-- Subtle brand watermark — the NUT leaf shape -->
+  <div class="bg-mark" aria-hidden="true">
+    <svg viewBox="0 0 348 153.85" xmlns="http://www.w3.org/2000/svg">
+      <path fill="#FFFFFF" d="M50.14,76.6c2.45,0,4.79,0.49,6.93,1.36L29.74,42.38c-4.98-6.49-14.17-7.81-20.79-3.12c-3.29,2.08-5.71,5.41-6.57,9.33c-0.27,1.35-0.35,2.74-0.25,4.11v83.31c0,8.16,6.62,14.78,14.78,14.78c8.16,0,14.78-6.62,14.78-14.78v-41.4C31.61,84.91,39.92,76.6,50.14,76.6 M97.43,140.5c0.51-1.5,0.8-3.11,0.8-4.78V50.95c0-8.17-6.62-14.78-14.78-14.78c-8.17,0-14.78,6.62-14.78,14.78v43.37c0,10.21-8.31,18.53-18.53,18.53c-1.88,0-3.7-0.29-5.41-0.81l25.69,33.44c5.1,6.64,14.63,7.89,21.27,2.79l0.55-0.43c2.2-1.69,3.8-3.88,4.78-6.28c0.07-0.16,0.12-0.32,0.19-0.48C97.28,140.89,97.36,140.7,97.43,140.5"></path>
+    </svg>
+  </div>
+
+  <main class="login-shell" role="main">
+    <div class="brand">
+      <img src="assets/logo-nut-white.svg" alt="NUT">
+    </div>
+
+    <div class="card" id="card">
+      <div class="card-head">
+        <h1>Bon retour sur NUT</h1>
+        <p>Connectez-vous pour accéder à votre plateforme de traçabilité.</p>
+      </div>
+
+      <!-- Error alert (hidden by default, shown after failed attempt) -->
+      <div id="alert" class="alert" style="display:none;" role="alert">
+        <span class="alert-icon"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="alert-circle" aria-hidden="true" style="width:18px;height:18px;" class="lucide lucide-alert-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg></span>
+        <div class="alert-body" id="alertBody">
+          <strong>Impossible de se connecter.</strong><br>
+          L'email ou le mot de passe est incorrect.
+        </div>
+      </div>
+
+      <form id="loginForm" novalidate="" autocomplete="on">
+
+        <div class="field" id="emailField">
+          <label for="email">Email</label>
+          <div class="input-wrap">
+            <input type="email" id="email" name="email" autocomplete="email" placeholder="vous@entreprise.fr" required="">
+          </div>
+          <div class="field-error" id="emailError" style="display:none;"></div>
+        </div>
+
+        <div class="field" id="passwordField">
+          <div class="field-helper-row">
+            <label for="password" style="margin-bottom:0;">Mot de passe</label>
+            <a href="#" id="forgotLink">Mot de passe oublié ?</a>
+          </div>
+          <div class="input-wrap">
+            <input type="password" id="password" name="password" autocomplete="current-password" placeholder="••••••••" required="">
+            <button type="button" class="pw-toggle" id="pwToggle" aria-label="Afficher le mot de passe">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" data-lucide="eye" aria-hidden="true" style="width:18px;height:18px;" class="lucide lucide-eye"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+          <div class="field-error" id="passwordError" style="display:none;"></div>
+        </div>
+
+        <div class="row">
+          <label class="checkbox">
+            <input type="checkbox" id="remember" name="remember">
+            <span>Se souvenir de moi</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn-primary" id="submitBtn">
+          <span id="submitLabel">Se connecter</span>
+        </button>
+
+      </form>
+    </div>
+
+    <div class="footer-row">
+      <span>© 2026 NUT</span>
+      <div class="footer-links">
+        <a href="#">Aide</a>
+        <a href="#">Mentions légales</a>
+        <a href="#">Confidentialité</a>
+      </div>
+    </div>
+  </main>
+
+  <div class="demo-hint" aria-hidden="true">
+    <strong>Démo · comptes de test</strong>
+    Admin : <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fb9a9f969295bb958e8fd59d89">[email&#160;protected]</a></code> / <code>nut2026</code><br>
+    Op. : <code><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bad5cac9fad6dbccdfcfc894dcc8">[email&#160;protected]</a></code> / <code>nut2026</code>
+  </div>
+
+  <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    // Initialize Lucide icons
+    if (window.lucide) window.lucide.createIcons();
+
+    // --- Mock "database" of users ---
+    const USERS = [
+      { email: 'admin@nut.fr',    password: 'nut2026', role: 'admin_nut',                 org: 'NUT' },
+      { email: 'ops@laveur.fr',   password: 'nut2026', role: 'operateur',                 org: 'LavPro SA' },
+      { email: 'gestionnaire@cuisinecollective.fr', password: 'nut2026', role: 'gestionnaire_organisation', org: 'Cuisine Centrale 93' },
+      { email: 'conso@nut.fr',    password: 'nut2026', role: 'consommateur',              org: null },
+    ];
+
+    // --- DOM refs ---
+    const form        = document.getElementById('loginForm');
+    const emailEl     = document.getElementById('email');
+    const passEl      = document.getElementById('password');
+    const rememberEl  = document.getElementById('remember');
+    const alertEl     = document.getElementById('alert');
+    const alertBody   = document.getElementById('alertBody');
+    const emailField  = document.getElementById('emailField');
+    const passField   = document.getElementById('passwordField');
+    const emailErr    = document.getElementById('emailError');
+    const passErr     = document.getElementById('passwordError');
+    const submitBtn   = document.getElementById('submitBtn');
+    const submitLabel = document.getElementById('submitLabel');
+    const pwToggle    = document.getElementById('pwToggle');
+    const card        = document.getElementById('card');
+
+    // --- Restore "remember me" email ---
+    try {
+      const remembered = localStorage.getItem('nut.rememberEmail');
+      if (remembered) {
+        emailEl.value = remembered;
+        rememberEl.checked = true;
+      }
+    } catch(_) {}
+
+    // --- Password visibility toggle ---
+    pwToggle.addEventListener('click', () => {
+      const isPassword = passEl.type === 'password';
+      passEl.type = isPassword ? 'text' : 'password';
+      pwToggle.innerHTML = isPassword
+        ? '<i data-lucide="eye-off" style="width:18px;height:18px;"></i>'
+        : '<i data-lucide="eye" style="width:18px;height:18px;"></i>';
+      pwToggle.setAttribute('aria-label', isPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
+      if (window.lucide) window.lucide.createIcons();
+    });
+
+    // --- Helpers ---
+    function clearErrors() {
+      alertEl.style.display = 'none';
+      emailField.classList.remove('has-error');
+      passField.classList.remove('has-error');
+      emailErr.style.display = 'none';
+      passErr.style.display = 'none';
+    }
+
+    function showAlert(title, message) {
+      alertBody.innerHTML = `<strong>${title}</strong><br>${message}`;
+      alertEl.style.display = 'flex';
+    }
+
+    function showFieldError(which, msg) {
+      const f = which === 'email' ? emailField : passField;
+      const e = which === 'email' ? emailErr : passErr;
+      f.classList.add('has-error');
+      e.textContent = msg;
+      e.style.display = 'block';
+    }
+
+    function isValidEmail(s) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
+    }
+
+    // --- Clear errors when user edits ---
+    [emailEl, passEl].forEach(el => {
+      el.addEventListener('input', () => {
+        if (alertEl.style.display !== 'none' || emailField.classList.contains('has-error') || passField.classList.contains('has-error')) {
+          clearErrors();
+        }
+      });
+    });
+
+    // --- Submit handler ---
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearErrors();
+
+      const email = emailEl.value.trim().toLowerCase();
+      const password = passEl.value;
+
+      // Client-side validation
+      let hasFieldError = false;
+      if (!email) {
+        showFieldError('email', 'Veuillez saisir votre email.');
+        hasFieldError = true;
+      } else if (!isValidEmail(email)) {
+        showFieldError('email', 'Format d\u2019email invalide.');
+        hasFieldError = true;
+      }
+      if (!password) {
+        showFieldError('password', 'Veuillez saisir votre mot de passe.');
+        hasFieldError = true;
+      }
+      if (hasFieldError) return;
+
+      // Loading state
+      submitBtn.disabled = true;
+      submitLabel.textContent = 'Connexion…';
+      const sp = document.createElement('span');
+      sp.className = 'spinner';
+      submitBtn.prepend(sp);
+
+      // Simulate network — 700ms
+      await new Promise(r => setTimeout(r, 700));
+
+      const user = USERS.find(u => u.email === email && u.password === password);
+
+      submitBtn.disabled = false;
+      submitLabel.textContent = 'Se connecter';
+      sp.remove();
+
+      if (!user) {
+        showAlert(
+          'Impossible de se connecter.',
+          'L\u2019email ou le mot de passe est incorrect. Vérifiez vos identifiants et réessayez.'
+        );
+        // Nudge: also flag the password field
+        passField.classList.add('has-error');
+        return;
+      }
+
+      // Success — remember & transition to success view
+      try {
+        if (rememberEl.checked) localStorage.setItem('nut.rememberEmail', email);
+        else localStorage.removeItem('nut.rememberEmail');
+        sessionStorage.setItem('nut.user', JSON.stringify({ email: user.email, role: user.role, org: user.org }));
+      } catch(_) {}
+
+      // Replace card content with a success state
+      card.innerHTML = `
+        <div class="success-view">
+          <div class="check"><i data-lucide="check" style="width:26px;height:26px;stroke-width:2.5;"></i></div>
+          <h2>Connexion réussie</h2>
+          <p>Bonjour <strong>${user.email}</strong><br>Redirection vers votre tableau de bord…</p>
+        </div>
+      `;
+      if (window.lucide) window.lucide.createIcons();
+    });
+
+    // Re-render any icons added dynamically
+    setTimeout(() => window.lucide && window.lucide.createIcons(), 50);
+  </script>
+
+
+
+</body></html>
