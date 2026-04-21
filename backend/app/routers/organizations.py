@@ -23,7 +23,7 @@ def _require_admin(current_user: User):
 def _require_admin_or_own_org(current_user: User, org_id: int):
     if current_user.role == UserRole.admin_nut:
         return
-    if current_user.role == UserRole.gestionnaire_org and current_user.id_organization == org_id:
+    if current_user.role == UserRole.gestionnaire_organisation and current_user.id_organization == org_id:
         return
     raise HTTPException(status_code=403, detail="Accès refusé")
 

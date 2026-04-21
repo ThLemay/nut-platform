@@ -176,7 +176,7 @@ async def broadcast_order(
     # admin_nut ou gestionnaire de l'organisation cliente
     if current_user.role != UserRole.admin_nut:
         if not (
-            current_user.role == UserRole.gestionnaire_org
+            current_user.role == UserRole.gestionnaire_organisation
             and current_user.id_organization == order.id_client
         ):
             raise HTTPException(status_code=403, detail="Accès refusé")
@@ -191,10 +191,7 @@ async def broadcast_order(
 
 # ── POST /orders/{id}/accept ──────────────────────────────────────────────────
 
-PROVIDER_ROLES = {
-    UserRole.laveur, UserRole.transporteur, UserRole.stockeur,
-    UserRole.recycleur, UserRole.destructeur,
-}
+PROVIDER_ROLES = {UserRole.operateur}
 
 @router.post("/{order_id}/accept", response_model=OrderOut)
 async def accept_order(

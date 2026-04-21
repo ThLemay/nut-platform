@@ -18,7 +18,11 @@
       "Bash(npx tsc:*)",
       "Bash(npm run:*)",
       "Bash(xargs grep:*)",
-      "Bash(python -c ':*)"
+      "Bash(python -c ':*)",
+      "Bash(python3 -m alembic revision --autogenerate -m \"add_reference_tables\")",
+      "Bash(curl -s http://localhost:8000/ref/container-statuses)",
+      "Bash(python3 -m json.tool)",
+      "Bash(docker restart *)"
     ]
   }
 }

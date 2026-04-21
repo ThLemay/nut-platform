@@ -8,6 +8,8 @@ from app.routers import organizations
 from app.routers import places
 from app.routers import orders
 from app.routers import credits
+from app.routers import events
+from app.routers import references
 
 app = FastAPI(
     title="NUT Traceability API",
@@ -32,6 +34,8 @@ app.include_router(organizations.router)
 app.include_router(places.router)
 app.include_router(orders.router)
 app.include_router(credits.router)
+app.include_router(events.router)
+app.include_router(references.router)
 
 @app.get("/health")
 async def health():

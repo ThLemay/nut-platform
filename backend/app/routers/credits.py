@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User, UserRole
-from app.models.credit import Credit, CreditTransaction, CreditConfig, CreditTransactionType
-from app.models.container import ContainerType
+from app.models.credit import Credit, CreditConfig
+from app.models.event_log import EventLog, EventType, EntityType
 from app.schemas.credit import (
     CreditConfigCreate, CreditConfigUpdate, CreditConfigOut,
-    CreditTransactionOut, CreditOut, CreditAdjust,
+    CreditOut, CreditAdjust,
 )
 
 router = APIRouter(prefix="/credits", tags=["credits"])
@@ -24,27 +24,18 @@ def _require_admin(current_user: User):
 
 
 def _require_admin_or_gestionnaire(current_user: User):
-    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_org):
+    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
         raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
 
 
 async def _get_or_create_credit(db: AsyncSession, user_id: int) -> Credit:
-    result = await db.execute(
-        select(Credit)
-        .options(selectinload(Credit.transactions))
-        .where(Credit.id_user == user_id)
-    )
+    result = await db.execute(select(Credit).where(Credit.id_user == user_id))
     credit = result.scalar_one_or_none()
     if credit is None:
         credit = Credit(id_user=user_id, balance=0)
         db.add(credit)
         await db.flush()
-        # Recharger avec transactions (vide à ce stade)
-        result = await db.execute(
-            select(Credit)
-            .options(selectinload(Credit.transactions))
-            .where(Credit.id == credit.id)
-        )
+        result = await db.execute(select(Credit).where(Credit.id == credit.id))
         credit = result.scalar_one()
     return credit
 
@@ -60,7 +51,7 @@ async def create_credit_config(
     _require_admin_or_gestionnaire(current_user)
 
     # Gestionnaire ne peut configurer que sa propre orga
-    if current_user.role == UserRole.gestionnaire_org:
+    if current_user.role == UserRole.gestionnaire_organisation:
         if current_user.id_organization != payload.id_organization:
             raise HTTPException(status_code=403, detail="Accès refusé à cette organisation")
 
@@ -100,7 +91,7 @@ async def list_credit_configs(
 
     stmt = select(CreditConfig)
 
-    if current_user.role == UserRole.gestionnaire_org:
+    if current_user.role == UserRole.gestionnaire_organisation:
         stmt = stmt.where(CreditConfig.id_organization == current_user.id_organization)
     elif id_organization is not None:
         stmt = stmt.where(CreditConfig.id_organization == id_organization)
@@ -126,7 +117,7 @@ async def update_credit_config(
         raise HTTPException(status_code=404, detail="Configuration introuvable")
 
     # Gestionnaire ne peut modifier que sa propre orga
-    if current_user.role == UserRole.gestionnaire_org:
+    if current_user.role == UserRole.gestionnaire_organisation:
         if current_user.id_organization != config.id_organization:
             raise HTTPException(status_code=403, detail="Accès refusé à cette configuration")
 
@@ -168,23 +159,18 @@ async def get_user_credits(
     return credit
 
 
-# ── GET /credits/users/{user_id}/transactions ─────────────────────────────────
+# ── GET /credits/users/{user_id}/transactions → redirect ─────────────────────
 
-@router.get("/users/{user_id}/transactions", response_model=list[CreditTransactionOut])
+@router.get("/users/{user_id}/transactions")
 async def get_user_transactions(
     user_id: int,
-    db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     _require_admin_or_gestionnaire(current_user)
-
-    result = await db.execute(
-        select(CreditTransaction)
-        .join(Credit, CreditTransaction.id_credit == Credit.id)
-        .where(Credit.id_user == user_id)
-        .order_by(CreditTransaction.created_at.desc())
+    return RedirectResponse(
+        url=f"/events?entity_type=credit&id_user={user_id}",
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
     )
-    return result.scalars().all()
 
 
 # ── POST /credits/users/{user_id}/adjust ──────────────────────────────────────
@@ -204,21 +190,18 @@ async def adjust_credits(
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
 
     credit = await _get_or_create_credit(db, user_id)
+    credit.balance += payload.amount
 
-    transaction = CreditTransaction(
-        id_credit=credit.id,
+    event = EventLog(
         id_user=user_id,
-        type=CreditTransactionType.ajustement,
-        amount=payload.amount,
+        entity_type=EntityType.credit,
+        entity_id=credit.id,
+        event_type=EventType.credit_ajustement,
+        new_value={"amount": float(payload.amount), "balance_after": float(credit.balance)},
         note=payload.note,
     )
-    db.add(transaction)
-    credit.balance += payload.amount
+    db.add(event)
     await db.commit()
 
-    result = await db.execute(
-        select(Credit)
-        .options(selectinload(Credit.transactions))
-        .where(Credit.id == credit.id)
-    )
+    result = await db.execute(select(Credit).where(Credit.id == credit.id))
     return result.scalar_one()

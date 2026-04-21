@@ -1,6 +1,7 @@
 import uuid
 from datetime import date
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy import func as safunc
@@ -8,14 +9,14 @@ from sqlalchemy import func as safunc
 from app.db.database import get_db
 from app.dependencies import require_role, get_current_user
 from app.models.user import UserRole, User
-from app.models.container import Container, ContainerStatus, ContainerType, ContainerStatusHistory, TRANSITIONS_AUTORISEES
+from app.models.container import Container, ContainerStatus, ContainerType, TRANSITIONS_AUTORISEES
 from app.models.organization import Organization
 from app.models.stock import Stock, StockStatus, StockContainer
-from app.models.credit import Credit, CreditTransaction, CreditConfig, CreditTransactionType
+from app.models.credit import Credit, CreditConfig
+from app.models.event_log import EventLog, EventType, EntityType
 from app.schemas.container import (
     ContainerCreate, ContainerBatchCreate, ContainerOut, ContainerBatchOut,
     ContainerStatusUpdate, ContainerStatusOut,
-    ContainerHistoryEntry, ContainerHistoryOut,
 )
 
 router = APIRouter(prefix="/containers", tags=["containers"])
@@ -139,21 +140,26 @@ async def update_container_status(
             detail=f"Transition {container.status} → {payload.status} non autorisée",
         )
 
+    old_status = container.status
     container.status = payload.status
     if payload.id_place is not None:
         container.id_current_place = payload.id_place
     if payload.status in (ContainerStatus.detruit, ContainerStatus.perdu):
         container.is_active = False
 
-    history = ContainerStatusHistory(
-        id_container=container.id,
-        status=payload.status,
+    event = EventLog(
+        id_user=current_user.id,
+        id_org=current_user.id_organization,
+        entity_type=EntityType.container,
+        entity_id=container.id,
+        event_type=EventType.container_status_change,
+        old_value={"status": old_status},
+        new_value={"status": payload.status},
         id_place=payload.id_place,
-        id_updated_by=current_user.id,
-        scan_method=payload.scan_method,
         note=payload.note,
+        meta={"scan_method": payload.scan_method, "uid": container.uid},
     )
-    db.add(history)
+    db.add(event)
 
     # Attribution de crédits lors du retour d'un contenant (scan par gestionnaire)
     if payload.status == ContainerStatus.sale and payload.id_beneficiaire is not None:
@@ -184,6 +190,7 @@ async def update_container_status(
                 )
             )
             config = nut_config_result.scalar_one_or_none()
+
         if config is not None:
             credit_result = await db.execute(
                 select(Credit).where(Credit.id_user == beneficiaire.id)
@@ -193,41 +200,36 @@ async def update_container_status(
                 credit = Credit(id_user=beneficiaire.id, balance=0)
                 db.add(credit)
                 await db.flush()
-            db.add(CreditTransaction(
-                id_credit=credit.id,
-                id_user=beneficiaire.id,
-                id_container=container.id,
-                type=CreditTransactionType.gain,
-                amount=config.credit_amount,
-                note="Retour contenant automatique",
-            ))
             credit.balance += config.credit_amount
+
+            credit_event = EventLog(
+                id_user=beneficiaire.id,
+                id_org=current_user.id_organization,
+                entity_type=EntityType.credit,
+                entity_id=credit.id,
+                event_type=EventType.credit_gain,
+                new_value={"amount": float(config.credit_amount), "balance_after": float(credit.balance)},
+                meta={"id_container": container.id, "id_beneficiaire": beneficiaire.id},
+            )
+            db.add(credit_event)
 
     await db.commit()
     await db.refresh(container)
     return container
 
 
-@router.get("/{uid}/history", response_model=ContainerHistoryOut)
+@router.get("/{uid}/history")
 async def get_container_history(
     uid: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_not_consommateur()),
+    _: User = Depends(require_not_consommateur()),
 ):
     result = await db.execute(select(Container).where(Container.uid == uid))
     container = result.scalar_one_or_none()
     if not container:
         raise HTTPException(status_code=404, detail="Contenant introuvable")
 
-    result = await db.execute(
-        select(ContainerStatusHistory)
-        .where(ContainerStatusHistory.id_container == container.id)
-        .order_by(ContainerStatusHistory.changed_at.asc())
-    )
-    entries = result.scalars().all()
-
-    return ContainerHistoryOut(
-        uid=container.uid,
-        total_entries=len(entries),
-        history=entries,
+    return RedirectResponse(
+        url=f"/events?entity_type=container&entity_id={container.id}",
+        status_code=status.HTTP_307_TEMPORARY_REDIRECT,
     )

@@ -5,16 +5,10 @@ from app.db.database import Base
 import enum
 
 class UserRole(str, enum.Enum):
-    admin_nut              = "admin_nut"
-    gestionnaire_org       = "gestionnaire_organisation"
-    food_provider          = "food_provider"
-    laveur                 = "laveur"
-    transporteur           = "transporteur"
-    recycleur              = "recycleur"
-    destructeur            = "destructeur"
-    stockeur               = "stockeur"
-    operateur              = "operateur"
-    consommateur           = "consommateur"
+    admin_nut                = "admin_nut"
+    gestionnaire_organisation = "gestionnaire_organisation"
+    operateur                = "operateur"
+    consommateur             = "consommateur"
 
 class UserStatus(str, enum.Enum):
     active   = "active"
@@ -37,7 +31,5 @@ class User(Base):
     last_login      = Column(DateTime(timezone=True))
 
     # Relations
-    organization            = relationship("Organization", back_populates="users")
-    credit                  = relationship("Credit", back_populates="user", uselist=False)
-    credit_transactions     = relationship("CreditTransaction", back_populates="user")
-    container_status_history = relationship("ContainerStatusHistory", back_populates="updated_by")
+    organization = relationship("Organization", back_populates="users")
+    credit       = relationship("Credit", back_populates="user", uselist=False)

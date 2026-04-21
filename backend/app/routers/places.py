@@ -20,7 +20,7 @@ def _require_not_consommateur(current_user: User):
 
 
 def _require_admin_or_gestionnaire(current_user: User):
-    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_org):
+    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
         raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
 
 
@@ -138,7 +138,7 @@ async def update_place(
 
     if current_user.role == UserRole.admin_nut:
         pass
-    elif current_user.role == UserRole.gestionnaire_org and place.id_organization == current_user.id_organization:
+    elif current_user.role == UserRole.gestionnaire_organisation and place.id_organization == current_user.id_organization:
         pass
     else:
         raise HTTPException(status_code=403, detail="Accès refusé")

@@ -19,11 +19,6 @@ class OwnershipType(str, enum.Enum):
     achat    = "achat"
     location = "location"
 
-class QualityCheckResult(str, enum.Enum):
-    apte          = "apte"
-    a_surveiller  = "a_surveiller"
-    inapte        = "inapte"
-
 
 TRANSITIONS_AUTORISEES: dict[ContainerStatus, list[ContainerStatus]] = {
     ContainerStatus.propre:      [ContainerStatus.en_consigne, ContainerStatus.en_transit],
@@ -112,43 +107,5 @@ class Container(Base):
     container_type      = relationship("ContainerType", back_populates="containers")
     current_place       = relationship("Place",         back_populates="containers")
     current_stock       = relationship("Stock",         back_populates="containers", foreign_keys=[id_current_stock])
-    status_history      = relationship("ContainerStatusHistory", back_populates="container", order_by="ContainerStatusHistory.changed_at")
     stock_entries       = relationship("StockContainer", back_populates="container")
     owner_organization  = relationship("Organization",  foreign_keys=[id_owner_organization])
-
-
-class ContainerStatusHistory(Base):
-    """Chaque changement de statut d'un contenant — source de toute la data analytique."""
-    __tablename__ = "container_status_history"
-
-    id                  = Column(BigInteger, primary_key=True, autoincrement=True)
-    id_container        = Column(BigInteger, ForeignKey("container.id"), nullable=False)
-    status              = Column(SAEnum(ContainerStatus), nullable=False)
-    id_place            = Column(BigInteger, ForeignKey("place.id"), nullable=True)
-    id_updated_by       = Column(BigInteger, ForeignKey("user.id"),  nullable=True)
-    changed_at          = Column(DateTime(timezone=True), server_default=func.now())
-    scan_method         = Column(String(20))   # "qr_code" | "rfid" | "manual"
-    note                = Column(Text)
-    id_responsible_org  = Column(BigInteger, ForeignKey("organization.id"), nullable=True)
-
-    # Relations
-    container       = relationship("Container", back_populates="status_history")
-    place           = relationship("Place")
-    updated_by      = relationship("User", back_populates="container_status_history")
-    responsible_org = relationship("Organization", foreign_keys=[id_responsible_org])
-
-
-class QualityCheck(Base):
-    """Contrôle qualité effectué sur un contenant."""
-    __tablename__ = "quality_check"
-
-    id           = Column(BigInteger, primary_key=True, autoincrement=True)
-    id_container = Column(BigInteger, ForeignKey("container.id"), nullable=False)
-    id_operator  = Column(BigInteger, ForeignKey("user.id"), nullable=True)
-    checked_at   = Column(DateTime(timezone=True), server_default=func.now())
-    result       = Column(SAEnum(QualityCheckResult), nullable=False)
-    note         = Column(Text, nullable=True)
-
-    # Relations
-    container = relationship("Container")
-    operator  = relationship("User")

@@ -2,7 +2,6 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
-from app.models.credit import CreditTransactionType
 
 
 class CreditConfigCreate(BaseModel):
@@ -23,22 +22,11 @@ class CreditConfigOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CreditTransactionOut(BaseModel):
-    id: int
-    type: CreditTransactionType
-    amount: Decimal
-    id_container: Optional[int]
-    note: Optional[str]
-    created_at: datetime
-    model_config = {"from_attributes": True}
-
-
 class CreditOut(BaseModel):
     id: int
     id_user: int
     balance: Decimal
     updated_at: Optional[datetime]
-    transactions: list[CreditTransactionOut]
     model_config = {"from_attributes": True}
 
 
