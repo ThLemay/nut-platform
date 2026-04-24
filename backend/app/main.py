@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routers import auth
+from app.routers import users
 from app.routers import containers
 from app.routers import container_types
 from app.routers import organizations
@@ -10,6 +11,7 @@ from app.routers import orders
 from app.routers import credits
 from app.routers import events
 from app.routers import references
+from app.routers import dashboard
 
 app = FastAPI(
     title="NUT Traceability API",
@@ -20,7 +22,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,6 +30,7 @@ app.add_middleware(
 
 # ── Routers ────────────────────────────────────────────────────────
 app.include_router(auth.router)
+app.include_router(users.router)
 app.include_router(containers.router)
 app.include_router(container_types.router, prefix="/container-types", tags=["container-types"])
 app.include_router(organizations.router)
@@ -36,6 +39,7 @@ app.include_router(orders.router)
 app.include_router(credits.router)
 app.include_router(events.router)
 app.include_router(references.router)
+app.include_router(dashboard.router)
 
 @app.get("/health")
 async def health():

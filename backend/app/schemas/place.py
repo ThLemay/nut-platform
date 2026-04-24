@@ -24,6 +24,7 @@ class PlaceUpdate(BaseModel):
     latitude: Optional[Decimal] = None
     longitude: Optional[Decimal] = None
     volume_capacity: Optional[Decimal] = None
+    address: Optional[dict] = Field(None, description="Adresse : {address, city, zipcode, country}")
 
 
 class PlaceOut(BaseModel):

@@ -1,0 +1,296 @@
+/* ============================================================
+   Page layout
+   ============================================================ */
+.db-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   Error state
+   ============================================================ */
+.db-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.db-error-icon {
+  color: var(--nut-accent-red);
+}
+
+.db-error p {
+  margin: 0;
+  font-size: var(--fs-base);
+}
+
+/* ============================================================
+   Base card
+   ============================================================ */
+.db-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.db-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.db-card-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--fg);
+  margin: 0;
+}
+
+/* ============================================================
+   Row 1 — KPI grid
+   ============================================================ */
+.db-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.db-kpi-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.db-kpi-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.db-kpi-value {
+  font-size: 2rem;
+  font-weight: var(--fw-bold);
+  color: var(--fg);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.db-kpi-label {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  font-weight: var(--fw-regular);
+  white-space: nowrap;
+}
+
+.db-kpi-icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   Row 2 — Container park card
+   ============================================================ */
+.db-park-card {
+  padding: 20px 24px;
+  flex-shrink: 0;
+}
+
+.db-park-total {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  white-space: nowrap;
+}
+
+.db-park-empty {
+  margin: 0;
+  font-size: var(--fs-base);
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+/* Segmented bar */
+.db-bar {
+  display: flex;
+  height: 14px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  gap: 1px;
+  background: var(--bg-subtle);
+  margin-bottom: 16px;
+}
+
+.db-bar-segment {
+  min-width: 2px;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+.db-bar-segment:hover {
+  opacity: 0.85;
+}
+
+/* Legend */
+.db-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+}
+
+.db-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+
+.db-legend-dot {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.db-legend-label {
+  color: var(--fg-muted);
+}
+
+.db-legend-count {
+  font-weight: var(--fw-medium);
+  color: var(--fg);
+}
+
+.db-legend-pct {
+  color: var(--fg-disabled);
+  font-size: var(--fs-xs);
+}
+
+/* ============================================================
+   Row 3 — Bottom 2-column grid
+   ============================================================ */
+.db-bottom-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.db-stat-card {
+  padding: 20px 24px;
+}
+
+.db-stat-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.db-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.db-stat-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.db-stat-row:first-child {
+  padding-top: 0;
+}
+
+.db-stat-value {
+  font-size: 1.75rem;
+  font-weight: var(--fw-bold);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  min-width: 3ch;
+}
+
+.db-stat-label {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================================
+   Skeleton / shimmer
+   ============================================================ */
+.db-sk {
+  border-radius: 6px;
+  background: linear-gradient(90deg, #f0f0f0 25%, #e8e8e8 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: db-shimmer 1.4s infinite;
+}
+
+@keyframes db-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* KPI card skeleton */
+.db-kpi-skel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.db-sk-val  { height: 32px; width: 60px; margin-bottom: 8px; }
+.db-sk-lbl  { height: 12px; width: 90px; }
+.db-sk-icon { flex-shrink: 0; width: 44px; height: 44px; border-radius: var(--radius-md); }
+
+/* Park card skeleton */
+.db-park-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.db-sk-bar { height: 14px; border-radius: var(--radius-pill); width: 100%; }
+
+.db-sk-legend-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.db-sk-legend { height: 12px; width: 80px; }
+
+/* Stat card skeleton */
+.db-stat-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 4px;
+}
+
+.db-sk-stat-row { height: 28px; width: 100%; }

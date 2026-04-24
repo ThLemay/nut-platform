@@ -143,7 +143,32 @@ async def update_place(
     else:
         raise HTTPException(status_code=403, detail="Accès refusé")
 
-    for field, value in payload.model_dump(exclude_none=True).items():
+    update_data = payload.model_dump(exclude_none=True)
+
+    if "address" in update_data:
+        addr_data = update_data.pop("address")
+        if place.id_address:
+            result_addr = await db.execute(
+                select(Address).where(Address.id == place.id_address)
+            )
+            addr = result_addr.scalar_one_or_none()
+            if addr:
+                addr.address  = addr_data.get("address")
+                addr.city     = addr_data.get("city")
+                addr.zipcode  = addr_data.get("zipcode")
+                addr.country  = addr_data.get("country")
+        else:
+            addr = Address(
+                address = addr_data.get("address"),
+                city    = addr_data.get("city"),
+                zipcode = addr_data.get("zipcode"),
+                country = addr_data.get("country"),
+            )
+            db.add(addr)
+            await db.flush()
+            place.id_address = addr.id
+
+    for field, value in update_data.items():
         setattr(place, field, value)
 
     await db.commit()

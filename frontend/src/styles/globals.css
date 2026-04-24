@@ -1,0 +1,153 @@
+/* ==========================================================================
+   NUT Platform — Colors & Type
+   Roboto via Google Fonts. B2B, sober, confortable density.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wdth,wght@0,75..100,100..900;1,75..100,100..900&display=swap');
+
+:root {
+  /* ------------------------------------------------------------------
+     Brand
+  ------------------------------------------------------------------ */
+  --nut-green:         #335A37;
+  --nut-green-dark:    #2A4A2D;
+  --nut-green-darker:  #1F3722;
+  --nut-accent-red:    #E8314A;
+  --nut-accent-red-dk: #C41C36;
+
+  /* ------------------------------------------------------------------
+     Neutres / Surfaces
+  ------------------------------------------------------------------ */
+  --bg-app:           #F5F5F5;
+  --bg-surface:       #FFFFFF;
+  --bg-muted:         #F9FAFB;
+  --bg-subtle:        #F3F4F6;
+  --border:           #E5E7EB;
+  --border-input:     #D1D5DB;
+
+  --fg:               #1A1A1A;
+  --fg-strong:        #111827;
+  --fg-muted:         #6B7280;
+  --fg-label:         #374151;
+  --fg-disabled:      #D1D5DB;
+  --fg-on-green:      #FFFFFF;
+
+  /* ------------------------------------------------------------------
+     Statuts Contenants (8 états du cycle de vie)
+  ------------------------------------------------------------------ */
+  --status-propre-bg:        #DCFCE7;   --status-propre-fg:        #16A34A;
+  --status-consigne-bg:      #DBEAFE;   --status-consigne-fg:      #3B82F6;
+  --status-sale-bg:          #FEF9C3;   --status-sale-fg:          #B45309;
+  --status-lavage-bg:        #F3E8FF;   --status-lavage-fg:        #8B5CF6;
+  --status-transit-bg:       #CFFAFE;   --status-transit-fg:       #0891B2;
+  --status-perdu-bg:         #FEE2E2;   --status-perdu-fg:         #EF4444;
+  --status-adetruire-bg:     #FEE2E2;   --status-adetruire-fg:     #DC2626;
+  --status-detruit-bg:       #F3F4F6;   --status-detruit-fg:       #6B7280;
+
+  /* ------------------------------------------------------------------
+     Semantic states (toast / alert)
+  ------------------------------------------------------------------ */
+  --success-bg: #DCFCE7; --success-fg: #166534; --success-border: #16A34A;
+  --error-bg:   #FEE2E2; --error-fg:   #991B1B; --error-border:   #E8314A;
+  --warning-bg: #FEF9C3; --warning-fg: #854D0E; --warning-border: #CA8A04;
+  --info-bg:    #DBEAFE; --info-fg:    #1E40AF; --info-border:    #3B82F6;
+
+  /* ------------------------------------------------------------------
+     KPI icon pastels
+  ------------------------------------------------------------------ */
+  --kpi-green-bg:  #E8F3E9; --kpi-green-fg:  #335A37;
+  --kpi-blue-bg:   #DBEAFE; --kpi-blue-fg:   #2563EB;
+  --kpi-amber-bg:  #FEF3C7; --kpi-amber-fg:  #B45309;
+  --kpi-purple-bg: #F3E8FF; --kpi-purple-fg: #7C3AED;
+  --kpi-red-bg:    #FEE2E2; --kpi-red-fg:    #DC2626;
+  --kpi-cyan-bg:   #CFFAFE; --kpi-cyan-fg:   #0E7490;
+
+  /* ------------------------------------------------------------------
+     Layout
+  ------------------------------------------------------------------ */
+  --sidebar-w:    240px;
+  --topbar-h:     64px;
+  --content-max:  1200px;
+  --content-pad:  24px;
+  --drawer-w:     480px;
+
+  /* ------------------------------------------------------------------
+     Radius / Shadow
+  ------------------------------------------------------------------ */
+  --radius-sm:    6px;
+  --radius-md:    8px;
+  --radius-lg:    12px;
+  --radius-pill:  20px;
+
+  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-topbar:   0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-drawer:   -4px 0 20px rgba(0, 0, 0, 0.10);
+  --shadow-toast:    0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-focus:    0 0 0 3px rgba(51, 90, 55, 0.15);
+
+  /* ------------------------------------------------------------------
+     Typography
+  ------------------------------------------------------------------ */
+  --font-sans: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --fs-xs:    11px;
+  --fs-sm:    12px;
+  --fs-label: 13px;
+  --fs-base:  14px;
+  --fs-md:    15px;
+  --fs-lg:    16px;
+  --fs-xl:    18px;
+  --fs-2xl:   20px;
+  --fs-kpi:   28px;
+
+  --fw-light:   300;
+  --fw-regular: 400;
+  --fw-medium:  500;
+  --fw-bold:    700;
+
+  --lh-tight: 1.25;
+  --lh-base:  1.5;
+  --lh-loose: 1.625;
+
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+
+  /* ------------------------------------------------------------------
+     Motion (discret — B2B)
+  ------------------------------------------------------------------ */
+  --ease-out:  cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast:  120ms;
+  --dur-base:  200ms;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+html, body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-regular);
+  line-height: var(--lh-base);
+  color: var(--fg);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Semantic type tokens
+   ========================================================================== */
+.t-page-title    { font-size: var(--fs-2xl);  font-weight: var(--fw-bold);    color: var(--fg); line-height: var(--lh-tight); }
+.t-topbar-title  { font-size: var(--fs-xl);   font-weight: var(--fw-bold);    color: var(--fg); }
+.t-section       { font-size: var(--fs-lg);   font-weight: var(--fw-medium);  color: var(--fg); }
+.t-card-title    { font-size: var(--fs-md);   font-weight: var(--fw-medium);  color: var(--fg); }
+.t-body          { font-size: var(--fs-base); font-weight: var(--fw-regular); color: var(--fg); }
+.t-body-muted    { font-size: var(--fs-base); font-weight: var(--fw-regular); color: var(--fg-muted); }
+.t-label         { font-size: var(--fs-label); font-weight: var(--fw-medium); color: var(--fg-label); }
+.t-table-header  { font-size: var(--fs-sm);   font-weight: var(--fw-medium);  color: var(--fg-muted); text-transform: uppercase; letter-spacing: var(--tracking-wide); }
+.t-table-cell    { font-size: var(--fs-base); font-weight: var(--fw-regular); color: var(--fg); }
+.t-badge         { font-size: var(--fs-sm);   font-weight: var(--fw-medium); }
+.t-sidebar-section { font-size: var(--fs-xs); font-weight: var(--fw-medium);  color: rgba(255,255,255,0.40); text-transform: uppercase; letter-spacing: var(--tracking-wider); }
+.t-kpi-value     { font-size: var(--fs-kpi);  font-weight: var(--fw-bold);   color: var(--fg); line-height: 1.1; }
+.t-kpi-label     { font-size: var(--fs-label); font-weight: var(--fw-regular); color: var(--fg-muted); }
+.t-helper-error  { font-size: var(--fs-sm);   color: var(--nut-accent-red); }

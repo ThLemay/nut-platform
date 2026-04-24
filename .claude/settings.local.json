@@ -22,7 +22,21 @@
       "Bash(python3 -m alembic revision --autogenerate -m \"add_reference_tables\")",
       "Bash(curl -s http://localhost:8000/ref/container-statuses)",
       "Bash(python3 -m json.tool)",
-      "Bash(docker restart *)"
+      "Bash(docker restart *)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:8000/openapi.json -o C:/Projects/nut-platform/openapi_live.json)",
+      "Bash(python -c \"from app.routers.users import router; from app.schemas.user import UserOut, UserCreate, UserUpdate; print\\('OK'\\)\")",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(curl -s http://localhost:8000/docs -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=thlemay@nut-green.fr&password=admin123')",
+      "Bash(curl -s http://localhost:8000/places -H \"Authorization: Bearer test\")",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=thibault@nut.com&password=motdepasse123')",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=thibault@nut.com&password=motdepasse123' -o C:/Projects/nut-platform/token.json)",
+      "Bash(curl -s http://localhost:8000/openapi.json -o /tmp/openapi_live.json)",
+      "Bash(python -c \"import sys,json; routes=[r for r in json.load\\(sys.stdin\\)['paths'].keys\\(\\) if 'dashboard' in r]; print\\(routes\\)\")",
+      "Bash(curl -s http://localhost:8000/)"
     ]
   }
 }

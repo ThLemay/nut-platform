@@ -1,10 +1,12 @@
 import uuid
 from datetime import date
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy import func as safunc
+from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
 from app.dependencies import require_role, get_current_user
@@ -22,6 +24,17 @@ from app.schemas.container import (
 router = APIRouter(prefix="/containers", tags=["containers"])
 
 
+def _build_container_select():
+    return select(Container).options(selectinload(Container.container_type))
+
+
+def _to_out(container: Container) -> ContainerOut:
+    out = ContainerOut.model_validate(container)
+    if container.container_type:
+        out.cont_type_name = container.container_type.name
+    return out
+
+
 def require_not_consommateur():
     async def check(current_user: User = Depends(get_current_user)):
         if current_user.role == UserRole.consommateur:
@@ -36,6 +49,44 @@ async def _get_nut_org_id(db: AsyncSession) -> int | None:
     org = result.scalar_one_or_none()
     return org.id if org else None
 
+
+# ── GET /containers ─────────────────────────────────────────────────
+
+@router.get("", response_model=list[ContainerOut])
+async def list_containers(
+    status_filter: Optional[ContainerStatus] = Query(None, alias="status"),
+    id_cont_type: Optional[int] = Query(None),
+    is_active: bool = Query(True),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.admin_nut)),
+):
+    stmt = _build_container_select().where(Container.is_active == is_active)
+    if status_filter is not None:
+        stmt = stmt.where(Container.status == status_filter)
+    if id_cont_type is not None:
+        stmt = stmt.where(Container.id_cont_type == id_cont_type)
+
+    result = await db.execute(stmt)
+    containers = result.scalars().all()
+    return [_to_out(c) for c in containers]
+
+
+# ── GET /containers/{uid} ───────────────────────────────────────────
+
+@router.get("/{uid}", response_model=ContainerOut)
+async def get_container(
+    uid: str,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(require_role(UserRole.admin_nut)),
+):
+    result = await db.execute(_build_container_select().where(Container.uid == uid))
+    container = result.scalar_one_or_none()
+    if not container:
+        raise HTTPException(status_code=404, detail="Contenant introuvable")
+    return _to_out(container)
+
+
+# ── POST /containers ─────────────────────────────────────────────────
 
 @router.post("", response_model=ContainerOut, status_code=status.HTTP_201_CREATED)
 async def create_container(

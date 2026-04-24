@@ -40,6 +40,7 @@ class ContainerOut(BaseModel):
     id: int
     uid: str
     id_cont_type: int
+    cont_type_name: Optional[str] = None
     status: ContainerStatus
     id_owner_organization: Optional[int]
     ownership_type: Optional[OwnershipType]
@@ -49,6 +50,10 @@ class ContainerOut(BaseModel):
     creation_date: Optional[datetime]
     total_wash_count: int
     is_active: bool
+    id_current_place: Optional[int] = None
+    id_current_stock: Optional[int] = None
+    last_quality_check: Optional[datetime] = None
+    quality_check_count: int = 0
 
     model_config = {"from_attributes": True}
 
