@@ -36,7 +36,13 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H 'Content-Type: application/x-www-form-urlencoded' -d 'username=thibault@nut.com&password=motdepasse123' -o C:/Projects/nut-platform/token.json)",
       "Bash(curl -s http://localhost:8000/openapi.json -o /tmp/openapi_live.json)",
       "Bash(python -c \"import sys,json; routes=[r for r in json.load\\(sys.stdin\\)['paths'].keys\\(\\) if 'dashboard' in r]; print\\(routes\\)\")",
-      "Bash(curl -s http://localhost:8000/)"
+      "Bash(curl -s http://localhost:8000/)",
+      "Bash(npx vite *)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2, default=str\\)\\)\")",
+      "Bash(curl -s -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluX251dCIsImV4cCI6MTc3NzAyMDU1M30._xYyP3JrLqonmPFhv_Co4R6RVVcw-mSDHQ-PMhmCefI\" http://localhost:8000/dashboard/stats)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@nut-green.fr\",\"password\":\"admin\"}')",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=admin@nut-green.fr&password=admin\")",
+      "Bash(curl -s http://localhost:8000/docs)"
     ]
   }
 }

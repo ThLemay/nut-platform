@@ -8,6 +8,7 @@ import Utilisateurs from './pages/Utilisateurs'
 import Lieux from './pages/Lieux'
 import Contenants from './pages/Contenants'
 import Commandes from './pages/Commandes'
+import NouvelleCommande from './pages/NouvelleCommande'
 import Dashboard from './pages/Dashboard'
 
 function PagePlaceholder({ title }: { title: string }) {
@@ -28,13 +29,14 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<DashboardLayout />}>
             <Route path="/dashboard"          element={<Dashboard />} />
-            <Route path="/organisations"    element={<Organisations />} />
-            <Route path="/utilisateurs"     element={<Utilisateurs />} />
-            <Route path="/lieux"            element={<Lieux />} />
-            <Route path="/contenants"       element={<Contenants />} />
-            <Route path="/types-contenants" element={<ContainerTypes />} />
+            <Route path="/organisations"      element={<Organisations />} />
+            <Route path="/utilisateurs"       element={<Utilisateurs />} />
+            <Route path="/lieux"              element={<Lieux />} />
+            <Route path="/contenants"         element={<Contenants />} />
+            <Route path="/types-contenants"   element={<ContainerTypes />} />
             <Route path="/commandes"          element={<Commandes />} />
-            <Route path="/mes-credits"      element={<PagePlaceholder title="Mes crédits" />} />
+            <Route path="/commandes/nouvelle" element={<NouvelleCommande />} />
+            <Route path="/mes-credits"        element={<PagePlaceholder title="Mes crédits" />} />
           </Route>
         </Route>
 

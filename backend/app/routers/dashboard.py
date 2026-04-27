@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date, time
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.models.container import Container, ContainerStatus
+from app.models.event_log import EventLog, EventType
 from app.models.order import Order, OrderStatus
 from app.models.organization import Organization
 from app.models.user import User, UserRole
@@ -22,6 +23,18 @@ _PRESTATAIRE_ROLE_VALUES = frozenset({
 })
 
 
+# ── Schemas ─────────────────────────────────────────────────────────────────
+
+class CommandeResume(BaseModel):
+    id: int
+    order_type: str
+    status: str
+    id_client: int
+    id_provider: int | None
+    desired_date: datetime | None
+    order_date: datetime | None
+
+
 class DashboardStats(BaseModel):
     # Contenants
     contenants_total: int
@@ -32,19 +45,25 @@ class DashboardStats(BaseModel):
     contenants_en_transit: int
     contenants_perdus: int
     contenants_a_detruire: int
+    contenants_sortis_parc: int       # detruit + perdu
 
     # Commandes
     commandes_brouillon: int
     commandes_en_cours: int
     commandes_livrees_ce_mois: int
+    commandes_du_jour: int            # desired_date = aujourd'hui
+    dernieres_commandes: list[CommandeResume]  # 5 dernières
+
+    # CO2
+    co2_economise_grammes: int        # nb événements × 33
 
     # Organisations & utilisateurs
     organisations_total: int
     utilisateurs_total: int
-    membres_organisation: int = 0   # gestionnaire : membres de l'org
+    membres_organisation: int = 0    # gestionnaire : membres de l'org
 
 
-# ── helpers ────────────────────────────────────────────────────────────────
+# ── Helpers ─────────────────────────────────────────────────────────────────
 
 async def _count(db: AsyncSession, stmt) -> int:
     result = await db.execute(stmt)
@@ -56,6 +75,12 @@ def _month_start() -> datetime:
     return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
 
+def _today_range() -> tuple[datetime, datetime]:
+    today_start = datetime.combine(date.today(), time.min).replace(tzinfo=timezone.utc)
+    today_end   = datetime.combine(date.today(), time.max).replace(tzinfo=timezone.utc)
+    return today_start, today_end
+
+
 def _require_org(user: User) -> int:
     if user.id_organization is None:
         raise HTTPException(
@@ -63,6 +88,18 @@ def _require_org(user: User) -> int:
             detail="Accès refusé : aucune organisation associée à ce compte",
         )
     return user.id_organization
+
+
+def _to_resume(o: Order) -> CommandeResume:
+    return CommandeResume(
+        id=o.id,
+        order_type=o.order_type.value,
+        status=o.status.value,
+        id_client=o.id_client,
+        id_provider=o.id_provider,
+        desired_date=o.desired_date,
+        order_date=o.order_date,
+    )
 
 
 _STATUTS_EN_COURS = [
@@ -75,10 +112,11 @@ _STATUTS_EN_COURS = [
 ]
 
 
-# ── per-role stat builders ──────────────────────────────────────────────────
+# ── Per-role stat builders ───────────────────────────────────────────────────
 
 async def _stats_admin(db: AsyncSession) -> DashboardStats:
     month_start = _month_start()
+    today_start, today_end = _today_range()
     ACTIVE = Container.is_active == True  # noqa: E712
 
     def ct_count(st: ContainerStatus):
@@ -93,11 +131,14 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
         contenants_en_transit,
         contenants_perdus,
         contenants_a_detruire,
+        contenants_sortis_parc,
         commandes_brouillon,
         commandes_en_cours,
         commandes_livrees_ce_mois,
+        commandes_du_jour,
         organisations_total,
         utilisateurs_total,
+        co2_events,
     ) = await asyncio.gather(
         _count(db, select(func.count()).select_from(Container).where(ACTIVE)),
         _count(db, ct_count(ContainerStatus.propre)),
@@ -107,6 +148,9 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
         _count(db, ct_count(ContainerStatus.en_transit)),
         _count(db, ct_count(ContainerStatus.perdu)),
         _count(db, ct_count(ContainerStatus.a_detruire)),
+        _count(db, select(func.count()).select_from(Container).where(
+            Container.status.in_([ContainerStatus.detruit, ContainerStatus.perdu]),
+        )),
         _count(db, select(func.count()).select_from(Order).where(
             Order.status == OrderStatus.brouillon,
         )),
@@ -117,9 +161,20 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
             Order.status == OrderStatus.livree,
             Order.order_date >= month_start,
         )),
+        _count(db, select(func.count()).select_from(Order).where(
+            Order.desired_date.between(today_start, today_end),
+        )),
         _count(db, select(func.count()).select_from(Organization)),
         _count(db, select(func.count()).select_from(User)),
+        _count(db, select(func.count()).select_from(EventLog).where(
+            EventLog.event_type == EventType.container_status_change,
+        )),
     )
+
+    result = await db.execute(
+        select(Order).order_by(Order.order_date.desc()).limit(5)
+    )
+    dernieres = [_to_resume(o) for o in result.scalars().all()]
 
     return DashboardStats(
         contenants_total=contenants_total,
@@ -130,9 +185,13 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
         contenants_en_transit=contenants_en_transit,
         contenants_perdus=contenants_perdus,
         contenants_a_detruire=contenants_a_detruire,
+        contenants_sortis_parc=contenants_sortis_parc,
         commandes_brouillon=commandes_brouillon,
         commandes_en_cours=commandes_en_cours,
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
+        commandes_du_jour=commandes_du_jour,
+        dernieres_commandes=dernieres,
+        co2_economise_grammes=co2_events * 33,
         organisations_total=organisations_total,
         utilisateurs_total=utilisateurs_total,
     )
@@ -140,9 +199,10 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
 
 async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
     month_start = _month_start()
+    today_start, today_end = _today_range()
 
-    ACTIVE_ORG = (Container.is_active == True, Container.id_owner_organization == org_id)  # noqa: E712
-    CLIENT_OR_PROVIDER = or_(Order.id_client == org_id, Order.id_provider == org_id)
+    ACTIVE_ORG      = (Container.is_active == True, Container.id_owner_organization == org_id)  # noqa: E712
+    CLIENT_OR_PROV  = or_(Order.id_client == org_id, Order.id_provider == org_id)
 
     def ct_count(st: ContainerStatus):
         return select(func.count()).select_from(Container).where(*ACTIVE_ORG, Container.status == st)
@@ -156,10 +216,13 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
         contenants_en_transit,
         contenants_perdus,
         contenants_a_detruire,
+        contenants_sortis_parc,
         commandes_brouillon,
         commandes_en_cours,
         commandes_livrees_ce_mois,
+        commandes_du_jour,
         membres_organisation,
+        co2_events,
     ) = await asyncio.gather(
         _count(db, select(func.count()).select_from(Container).where(*ACTIVE_ORG)),
         _count(db, ct_count(ContainerStatus.propre)),
@@ -169,23 +232,40 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
         _count(db, ct_count(ContainerStatus.en_transit)),
         _count(db, ct_count(ContainerStatus.perdu)),
         _count(db, ct_count(ContainerStatus.a_detruire)),
+        _count(db, select(func.count()).select_from(Container).where(
+            Container.id_owner_organization == org_id,
+            Container.status.in_([ContainerStatus.detruit, ContainerStatus.perdu]),
+        )),
         _count(db, select(func.count()).select_from(Order).where(
-            CLIENT_OR_PROVIDER,
+            CLIENT_OR_PROV,
             Order.status == OrderStatus.brouillon,
         )),
         _count(db, select(func.count()).select_from(Order).where(
-            CLIENT_OR_PROVIDER,
+            CLIENT_OR_PROV,
             Order.status.in_(_STATUTS_EN_COURS),
         )),
         _count(db, select(func.count()).select_from(Order).where(
-            CLIENT_OR_PROVIDER,
+            CLIENT_OR_PROV,
             Order.status == OrderStatus.livree,
             Order.order_date >= month_start,
+        )),
+        _count(db, select(func.count()).select_from(Order).where(
+            CLIENT_OR_PROV,
+            Order.desired_date.between(today_start, today_end),
         )),
         _count(db, select(func.count()).select_from(User).where(
             User.id_organization == org_id,
         )),
+        _count(db, select(func.count()).select_from(EventLog).where(
+            EventLog.event_type == EventType.container_status_change,
+            EventLog.id_org == org_id,
+        )),
     )
+
+    result = await db.execute(
+        select(Order).where(CLIENT_OR_PROV).order_by(Order.order_date.desc()).limit(5)
+    )
+    dernieres = [_to_resume(o) for o in result.scalars().all()]
 
     return DashboardStats(
         contenants_total=contenants_total,
@@ -196,9 +276,13 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
         contenants_en_transit=contenants_en_transit,
         contenants_perdus=contenants_perdus,
         contenants_a_detruire=contenants_a_detruire,
+        contenants_sortis_parc=contenants_sortis_parc,
         commandes_brouillon=commandes_brouillon,
         commandes_en_cours=commandes_en_cours,
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
+        commandes_du_jour=commandes_du_jour,
+        dernieres_commandes=dernieres,
+        co2_economise_grammes=co2_events * 33,
         organisations_total=0,
         utilisateurs_total=0,
         membres_organisation=membres_organisation,
@@ -207,12 +291,14 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
 
 async def _stats_prestataire(db: AsyncSession, org_id: int) -> DashboardStats:
     month_start = _month_start()
+    today_start, today_end = _today_range()
     PROVIDER = Order.id_provider == org_id
 
     (
         commandes_brouillon,
         commandes_en_cours,
         commandes_livrees_ce_mois,
+        commandes_du_jour,
     ) = await asyncio.gather(
         _count(db, select(func.count()).select_from(Order).where(
             PROVIDER,
@@ -227,7 +313,16 @@ async def _stats_prestataire(db: AsyncSession, org_id: int) -> DashboardStats:
             Order.status == OrderStatus.livree,
             Order.order_date >= month_start,
         )),
+        _count(db, select(func.count()).select_from(Order).where(
+            PROVIDER,
+            Order.desired_date.between(today_start, today_end),
+        )),
     )
+
+    result = await db.execute(
+        select(Order).where(PROVIDER).order_by(Order.order_date.desc()).limit(5)
+    )
+    dernieres = [_to_resume(o) for o in result.scalars().all()]
 
     return DashboardStats(
         contenants_total=0,
@@ -238,15 +333,19 @@ async def _stats_prestataire(db: AsyncSession, org_id: int) -> DashboardStats:
         contenants_en_transit=0,
         contenants_perdus=0,
         contenants_a_detruire=0,
+        contenants_sortis_parc=0,
         commandes_brouillon=commandes_brouillon,
         commandes_en_cours=commandes_en_cours,
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
+        commandes_du_jour=commandes_du_jour,
+        dernieres_commandes=dernieres,
+        co2_economise_grammes=0,
         organisations_total=0,
         utilisateurs_total=0,
     )
 
 
-# ── endpoint ────────────────────────────────────────────────────────────────
+# ── Endpoint ─────────────────────────────────────────────────────────────────
 
 @router.get("/stats", response_model=DashboardStats)
 async def get_dashboard_stats(
