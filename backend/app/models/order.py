@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, String, Text, Enum as SAEnum, Numeric, Boolean
+from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, String, Text, Enum as SAEnum, Numeric, Boolean, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -41,6 +41,14 @@ class Order(Base):
     desired_date     = Column(DateTime(timezone=True))     # date souhaitée par le client
     confirmed_date   = Column(DateTime(timezone=True))     # date confirmée
     note             = Column(Text)
+
+    __table_args__ = (
+        Index("ix_order_status", "status"),
+        Index("ix_order_id_client_status", "id_client", "status"),
+        Index("ix_order_id_provider_status", "id_provider", "status"),
+        Index("ix_order_order_date", "order_date"),
+        Index("ix_order_desired_date", "desired_date"),
+    )
 
     # Relations
     client        = relationship("Organization", foreign_keys=[id_client],   back_populates="orders_as_client")

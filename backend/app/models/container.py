@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, String, Boolean, DateTime, ForeignKey, Numeric, Text, Enum as SAEnum, Integer
+from sqlalchemy import Column, BigInteger, String, Boolean, DateTime, ForeignKey, Numeric, Text, Enum as SAEnum, Integer, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -102,6 +102,12 @@ class Container(Base):
     batch_number          = Column(String(100), nullable=True)
     last_quality_check    = Column(DateTime(timezone=True), nullable=True)
     quality_check_count   = Column(Integer, default=0)
+
+    __table_args__ = (
+        Index("ix_container_is_active_status", "is_active", "status"),
+        Index("ix_container_owner_active_status", "id_owner_organization", "is_active", "status"),
+        Index("ix_container_id_cont_type", "id_cont_type"),
+    )
 
     # Relations
     container_type      = relationship("ContainerType", back_populates="containers")

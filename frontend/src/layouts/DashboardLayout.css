@@ -91,6 +91,13 @@
   text-overflow: ellipsis;
 }
 
+/* Profil link (bas de sidebar, au-dessus du footer) */
+.sidebar-profile-section {
+  padding: 8px 12px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.10);
+}
+
 /* Sidebar footer */
 .sidebar-footer {
   flex-shrink: 0;
@@ -267,6 +274,19 @@
   margin: 0 4px;
 }
 
+.topbar-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 6px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.topbar-user-btn:hover { background: var(--bg-muted); }
+
 .topbar-avatar {
   width: 32px;
   height: 32px;
@@ -280,7 +300,14 @@
   align-items: center;
   justify-content: center;
   text-transform: uppercase;
-  cursor: default;
+  flex-shrink: 0;
+}
+
+.topbar-name {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg);
+  white-space: nowrap;
 }
 
 /* Content */
@@ -289,7 +316,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
   padding: var(--content-pad);
   background: var(--bg-app);
 }

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, Text, Enum as SAEnum
+from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, Text, Enum as SAEnum, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -54,6 +54,10 @@ class EventLog(Base):
     id_place = Column(BigInteger, ForeignKey("place.id"), nullable=True)
     note     = Column(Text, nullable=True)
     meta     = Column(JSONB, nullable=True)
+
+    __table_args__ = (
+        Index("ix_event_log_entity", "entity_type", "entity_id", "created_at"),
+    )
 
     # Relations
     user  = relationship("User")

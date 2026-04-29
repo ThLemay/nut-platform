@@ -9,6 +9,7 @@ from app.models.order        import Order, OrderLine, Transport, TransportSlot, 
 from app.models.credit       import Credit, CreditConfig
 from app.models.event_log    import EventLog, EventType, EntityType
 from app.models.reference    import PlaceTypeRef, OrderTypeRef, ContainerStatusRef, StockStatusRef, EventTypeRef
+from app.models.notification import Notification
 
 __all__ = [
     "Base",
@@ -21,4 +22,5 @@ __all__ = [
     "Credit", "CreditConfig",
     "EventLog", "EventType", "EntityType",
     "PlaceTypeRef", "OrderTypeRef", "ContainerStatusRef", "StockStatusRef", "EventTypeRef",
+    "Notification",
 ]

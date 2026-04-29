@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Building2, Users, MapPin, Package, Box,
-  ClipboardList, CreditCard, LogOut, Scan, Plus, Bell, ChevronRight,
+  ClipboardList, CreditCard, LogOut, Scan, Plus, ChevronRight, User,
 } from 'lucide-react'
 import useAuthStore from '../store/authStore'
 import api from '../lib/api'
 import ScanRapide from '../components/ScanRapide'
+import NotificationBell from '../components/notifications/NotificationBell'
 import './DashboardLayout.css'
 
 type Role = 'admin_nut' | 'gestionnaire_organisation' | 'operateur' | 'consommateur'
@@ -51,7 +52,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/types-contenants': 'Types de contenants',
   '/commandes':          'Commandes',
   '/commandes/nouvelle': 'Nouvelle commande',
+  '/stocks':             'Stocks',
   '/mes-credits':        'Mes crédits',
+  '/profil':             'Mon profil',
 }
 
 export default function DashboardLayout() {
@@ -69,7 +72,8 @@ export default function DashboardLayout() {
     }
   }, [isAuthenticated, user, setUser, logout, navigate])
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try { await api.post('/auth/logout') } catch { /* ignore — on déconnecte localement de toute façon */ }
     logout()
     navigate('/login')
   }
@@ -115,7 +119,7 @@ export default function DashboardLayout() {
 
         {/* Footer user */}
         <div className="sidebar-footer">
-          <div className="sidebar-user">
+          <div className="sidebar-user" onClick={() => navigate('/profil')} style={{ cursor: 'pointer' }}>
             <div className="sidebar-avatar" aria-hidden="true">{initials}</div>
             <div className="sidebar-user-info">
               <div className="sidebar-user-name">{fullName}</div>
@@ -124,7 +128,7 @@ export default function DashboardLayout() {
             <button
               className="sidebar-logout"
               aria-label="Se déconnecter"
-              onClick={handleLogout}
+              onClick={e => { e.stopPropagation(); handleLogout() }}
             >
               <LogOut size={16} />
             </button>
@@ -149,10 +153,15 @@ export default function DashboardLayout() {
               Nouvelle commande
             </button>
             <div className="topbar-divider" aria-hidden="true" />
-            <button className="btn-icon" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
-            <div className="topbar-avatar" aria-hidden="true">{initials}</div>
+            <NotificationBell />
+            <button
+                className="topbar-user-btn"
+                onClick={() => navigate('/profil')}
+                aria-label="Mon profil"
+              >
+                <div className="topbar-avatar" aria-hidden="true">{initials}</div>
+                <span className="topbar-name">{fullName}</span>
+              </button>
           </div>
         </header>
 

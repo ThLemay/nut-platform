@@ -1,0 +1,235 @@
+/* ============================================================
+   Page layout
+   ============================================================ */
+.pf-page {
+  padding: 24px 32px 48px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.pf-title {
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--fg);
+  margin: 0;
+  line-height: var(--lh-tight);
+}
+
+/* ============================================================
+   Grid
+   ============================================================ */
+.pf-grid {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.pf-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 28px 24px;
+}
+
+/* Card gauche — lecture seule */
+.pf-card--info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.pf-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--nut-green);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: var(--fw-bold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.pf-fullname {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--fg);
+  line-height: var(--lh-tight);
+}
+
+.pf-email {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+  word-break: break-all;
+}
+
+.pf-role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+}
+
+.pf-org {
+  font-size: var(--fs-sm);
+  color: var(--fg-muted);
+}
+
+/* Card droite — form */
+.pf-card--form {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 32px;
+}
+
+/* ============================================================
+   Form (card droite)
+   ============================================================ */
+.pf-section-title {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--fg);
+  margin: 0 0 16px;
+}
+
+.pf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+
+.pf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.pf-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+}
+
+.pf-input {
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-input);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  color: var(--fg);
+  background: #fff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.pf-input:focus {
+  border-color: var(--nut-green);
+  box-shadow: var(--shadow-focus);
+}
+
+.pf-input--error { border-color: var(--nut-accent-red); }
+.pf-input--error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15); }
+
+.pf-error {
+  font-size: var(--fs-xs);
+  color: var(--nut-accent-red);
+}
+
+.pf-separator {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+/* ============================================================
+   Toast inline
+   ============================================================ */
+.pf-toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-sm);
+  margin-bottom: 16px;
+}
+
+.pf-toast--success {
+  background: #F0FDF4;
+  border: 1px solid #BBF7D0;
+  color: #166534;
+}
+
+.pf-toast--error {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #991B1B;
+}
+
+/* ============================================================
+   Footer / Submit
+   ============================================================ */
+.pf-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.pf-btn-save {
+  height: 36px;
+  padding: 0 20px;
+  background: var(--nut-green);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+.pf-btn-save {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+
+.pf-btn-save:hover:not(:disabled) { background: var(--nut-green-dark); }
+.pf-btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
+
+@keyframes pf-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.pf-spin { animation: pf-spin 1s linear infinite; }

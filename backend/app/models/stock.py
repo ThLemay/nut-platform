@@ -1,4 +1,4 @@
-from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, String, Text, Enum as SAEnum
+from sqlalchemy import Column, BigInteger, DateTime, ForeignKey, String, Text, Enum as SAEnum, Index
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.db.database import Base
@@ -19,7 +19,7 @@ class Stock(Base):
     status       = Column(SAEnum(StockStatus), nullable=False, default=StockStatus.en_cours)
     id_place     = Column(BigInteger, ForeignKey("place.id"), nullable=True)
     id_order     = Column(BigInteger, ForeignKey("order.id"), nullable=True)  # commande associée si transport
-    id_owner_organization = Column(BigInteger, ForeignKey("organization.id"), nullable=True)
+    id_owner_organization = Column(BigInteger, ForeignKey("organization.id"), nullable=True, index=True)
     created_at   = Column(DateTime(timezone=True), server_default=func.now())
     note         = Column(Text)
 
@@ -36,8 +36,8 @@ class StockContainer(Base):
     __tablename__ = "stock_container"
 
     id           = Column(BigInteger, primary_key=True, autoincrement=True)
-    id_stock     = Column(BigInteger, ForeignKey("stock.id"),     nullable=False)
-    id_container = Column(BigInteger, ForeignKey("container.id"), nullable=False)
+    id_stock     = Column(BigInteger, ForeignKey("stock.id"),     nullable=False, index=True)
+    id_container = Column(BigInteger, ForeignKey("container.id"), nullable=False, index=True)
     added_at     = Column(DateTime(timezone=True), server_default=func.now())
     removed_at   = Column(DateTime(timezone=True), nullable=True)  # null = toujours dans le stock
 

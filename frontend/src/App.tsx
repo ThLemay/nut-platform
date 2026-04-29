@@ -10,6 +10,8 @@ import Contenants from './pages/Contenants'
 import Commandes from './pages/Commandes'
 import NouvelleCommande from './pages/NouvelleCommande'
 import Dashboard from './pages/Dashboard'
+import Profil from './pages/Profil'
+import Stocks from './pages/Stocks'
 
 function PagePlaceholder({ title }: { title: string }) {
   return (
@@ -37,6 +39,8 @@ export default function App() {
             <Route path="/commandes"          element={<Commandes />} />
             <Route path="/commandes/nouvelle" element={<NouvelleCommande />} />
             <Route path="/mes-credits"        element={<PagePlaceholder title="Mes crédits" />} />
+            <Route path="/stocks"             element={<Stocks />} />
+            <Route path="/profil"             element={<Profil />} />
           </Route>
         </Route>
 

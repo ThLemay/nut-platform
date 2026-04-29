@@ -5,7 +5,7 @@ from sqlalchemy import select
 from app.db.database import get_db
 from app.dependencies import get_current_user
 from app.core.security import hash_password
-from app.models.user import User, UserRole
+from app.models.user import User, UserRole, UserStatus
 from app.schemas.user import UserOut, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -90,16 +90,26 @@ async def update_user(
 
     data = payload.model_dump(exclude_none=True)
 
+    revoke_tokens = False
+
     if "password" in data:
         user.hashed_password = hash_password(data.pop("password"))
+        revoke_tokens = True
 
     if "email" in data and data["email"] != user.email:
         dup = await db.execute(select(User).where(User.email == data["email"]))
         if dup.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
 
+    # Passage à un status non-actif → on révoque aussi
+    if "status" in data and data["status"] != UserStatus.active:
+        revoke_tokens = True
+
     for field, value in data.items():
         setattr(user, field, value)
+
+    if revoke_tokens:
+        user.token_version += 1
 
     await db.commit()
     await db.refresh(user)

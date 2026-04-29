@@ -114,48 +114,46 @@ _STATUTS_EN_COURS = [
 
 # ── Per-role stat builders ───────────────────────────────────────────────────
 
+async def _container_status_counts(db: AsyncSession, *extra_filters) -> dict[ContainerStatus, int]:
+    """Counts par statut pour les containers actifs (1 query GROUP BY)."""
+    stmt = (
+        select(Container.status, func.count())
+        .where(Container.is_active == True, *extra_filters)  # noqa: E712
+        .group_by(Container.status)
+    )
+    result = await db.execute(stmt)
+    return {row[0]: row[1] for row in result.all()}
+
+
+async def _order_status_counts(db: AsyncSession, *extra_filters) -> dict[OrderStatus, int]:
+    """Counts par statut sur brouillon + statuts 'en cours' (1 query GROUP BY)."""
+    in_flight = [OrderStatus.brouillon, *_STATUTS_EN_COURS]
+    stmt = (
+        select(Order.status, func.count())
+        .where(Order.status.in_(in_flight), *extra_filters)
+        .group_by(Order.status)
+    )
+    result = await db.execute(stmt)
+    return {row[0]: row[1] for row in result.all()}
+
+
 async def _stats_admin(db: AsyncSession) -> DashboardStats:
     month_start = _month_start()
     today_start, today_end = _today_range()
-    ACTIVE = Container.is_active == True  # noqa: E712
 
-    def ct_count(st: ContainerStatus):
-        return select(func.count()).select_from(Container).where(ACTIVE, Container.status == st)
+    container_counts = await _container_status_counts(db)
+    order_counts     = await _order_status_counts(db)
 
     (
-        contenants_total,
-        contenants_propres,
-        contenants_en_consigne,
-        contenants_sales,
-        contenants_en_lavage,
-        contenants_en_transit,
-        contenants_perdus,
-        contenants_a_detruire,
         contenants_sortis_parc,
-        commandes_brouillon,
-        commandes_en_cours,
         commandes_livrees_ce_mois,
         commandes_du_jour,
         organisations_total,
         utilisateurs_total,
         co2_events,
     ) = await asyncio.gather(
-        _count(db, select(func.count()).select_from(Container).where(ACTIVE)),
-        _count(db, ct_count(ContainerStatus.propre)),
-        _count(db, ct_count(ContainerStatus.en_consigne)),
-        _count(db, ct_count(ContainerStatus.sale)),
-        _count(db, ct_count(ContainerStatus.en_lavage)),
-        _count(db, ct_count(ContainerStatus.en_transit)),
-        _count(db, ct_count(ContainerStatus.perdu)),
-        _count(db, ct_count(ContainerStatus.a_detruire)),
         _count(db, select(func.count()).select_from(Container).where(
             Container.status.in_([ContainerStatus.detruit, ContainerStatus.perdu]),
-        )),
-        _count(db, select(func.count()).select_from(Order).where(
-            Order.status == OrderStatus.brouillon,
-        )),
-        _count(db, select(func.count()).select_from(Order).where(
-            Order.status.in_(_STATUTS_EN_COURS),
         )),
         _count(db, select(func.count()).select_from(Order).where(
             Order.status == OrderStatus.livree,
@@ -177,17 +175,17 @@ async def _stats_admin(db: AsyncSession) -> DashboardStats:
     dernieres = [_to_resume(o) for o in result.scalars().all()]
 
     return DashboardStats(
-        contenants_total=contenants_total,
-        contenants_propres=contenants_propres,
-        contenants_en_consigne=contenants_en_consigne,
-        contenants_sales=contenants_sales,
-        contenants_en_lavage=contenants_en_lavage,
-        contenants_en_transit=contenants_en_transit,
-        contenants_perdus=contenants_perdus,
-        contenants_a_detruire=contenants_a_detruire,
+        contenants_total=sum(container_counts.values()),
+        contenants_propres=container_counts.get(ContainerStatus.propre, 0),
+        contenants_en_consigne=container_counts.get(ContainerStatus.en_consigne, 0),
+        contenants_sales=container_counts.get(ContainerStatus.sale, 0),
+        contenants_en_lavage=container_counts.get(ContainerStatus.en_lavage, 0),
+        contenants_en_transit=container_counts.get(ContainerStatus.en_transit, 0),
+        contenants_perdus=container_counts.get(ContainerStatus.perdu, 0),
+        contenants_a_detruire=container_counts.get(ContainerStatus.a_detruire, 0),
         contenants_sortis_parc=contenants_sortis_parc,
-        commandes_brouillon=commandes_brouillon,
-        commandes_en_cours=commandes_en_cours,
+        commandes_brouillon=order_counts.get(OrderStatus.brouillon, 0),
+        commandes_en_cours=sum(order_counts.get(s, 0) for s in _STATUTS_EN_COURS),
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
         commandes_du_jour=commandes_du_jour,
         dernieres_commandes=dernieres,
@@ -201,48 +199,21 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
     month_start = _month_start()
     today_start, today_end = _today_range()
 
-    ACTIVE_ORG      = (Container.is_active == True, Container.id_owner_organization == org_id)  # noqa: E712
-    CLIENT_OR_PROV  = or_(Order.id_client == org_id, Order.id_provider == org_id)
+    CLIENT_OR_PROV = or_(Order.id_client == org_id, Order.id_provider == org_id)
 
-    def ct_count(st: ContainerStatus):
-        return select(func.count()).select_from(Container).where(*ACTIVE_ORG, Container.status == st)
+    container_counts = await _container_status_counts(db, Container.id_owner_organization == org_id)
+    order_counts     = await _order_status_counts(db, CLIENT_OR_PROV)
 
     (
-        contenants_total,
-        contenants_propres,
-        contenants_en_consigne,
-        contenants_sales,
-        contenants_en_lavage,
-        contenants_en_transit,
-        contenants_perdus,
-        contenants_a_detruire,
         contenants_sortis_parc,
-        commandes_brouillon,
-        commandes_en_cours,
         commandes_livrees_ce_mois,
         commandes_du_jour,
         membres_organisation,
         co2_events,
     ) = await asyncio.gather(
-        _count(db, select(func.count()).select_from(Container).where(*ACTIVE_ORG)),
-        _count(db, ct_count(ContainerStatus.propre)),
-        _count(db, ct_count(ContainerStatus.en_consigne)),
-        _count(db, ct_count(ContainerStatus.sale)),
-        _count(db, ct_count(ContainerStatus.en_lavage)),
-        _count(db, ct_count(ContainerStatus.en_transit)),
-        _count(db, ct_count(ContainerStatus.perdu)),
-        _count(db, ct_count(ContainerStatus.a_detruire)),
         _count(db, select(func.count()).select_from(Container).where(
             Container.id_owner_organization == org_id,
             Container.status.in_([ContainerStatus.detruit, ContainerStatus.perdu]),
-        )),
-        _count(db, select(func.count()).select_from(Order).where(
-            CLIENT_OR_PROV,
-            Order.status == OrderStatus.brouillon,
-        )),
-        _count(db, select(func.count()).select_from(Order).where(
-            CLIENT_OR_PROV,
-            Order.status.in_(_STATUTS_EN_COURS),
         )),
         _count(db, select(func.count()).select_from(Order).where(
             CLIENT_OR_PROV,
@@ -268,17 +239,17 @@ async def _stats_gestionnaire(db: AsyncSession, org_id: int) -> DashboardStats:
     dernieres = [_to_resume(o) for o in result.scalars().all()]
 
     return DashboardStats(
-        contenants_total=contenants_total,
-        contenants_propres=contenants_propres,
-        contenants_en_consigne=contenants_en_consigne,
-        contenants_sales=contenants_sales,
-        contenants_en_lavage=contenants_en_lavage,
-        contenants_en_transit=contenants_en_transit,
-        contenants_perdus=contenants_perdus,
-        contenants_a_detruire=contenants_a_detruire,
+        contenants_total=sum(container_counts.values()),
+        contenants_propres=container_counts.get(ContainerStatus.propre, 0),
+        contenants_en_consigne=container_counts.get(ContainerStatus.en_consigne, 0),
+        contenants_sales=container_counts.get(ContainerStatus.sale, 0),
+        contenants_en_lavage=container_counts.get(ContainerStatus.en_lavage, 0),
+        contenants_en_transit=container_counts.get(ContainerStatus.en_transit, 0),
+        contenants_perdus=container_counts.get(ContainerStatus.perdu, 0),
+        contenants_a_detruire=container_counts.get(ContainerStatus.a_detruire, 0),
         contenants_sortis_parc=contenants_sortis_parc,
-        commandes_brouillon=commandes_brouillon,
-        commandes_en_cours=commandes_en_cours,
+        commandes_brouillon=order_counts.get(OrderStatus.brouillon, 0),
+        commandes_en_cours=sum(order_counts.get(s, 0) for s in _STATUTS_EN_COURS),
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
         commandes_du_jour=commandes_du_jour,
         dernieres_commandes=dernieres,
@@ -294,20 +265,12 @@ async def _stats_prestataire(db: AsyncSession, org_id: int) -> DashboardStats:
     today_start, today_end = _today_range()
     PROVIDER = Order.id_provider == org_id
 
+    order_counts = await _order_status_counts(db, PROVIDER)
+
     (
-        commandes_brouillon,
-        commandes_en_cours,
         commandes_livrees_ce_mois,
         commandes_du_jour,
     ) = await asyncio.gather(
-        _count(db, select(func.count()).select_from(Order).where(
-            PROVIDER,
-            Order.status == OrderStatus.brouillon,
-        )),
-        _count(db, select(func.count()).select_from(Order).where(
-            PROVIDER,
-            Order.status.in_(_STATUTS_EN_COURS),
-        )),
         _count(db, select(func.count()).select_from(Order).where(
             PROVIDER,
             Order.status == OrderStatus.livree,
@@ -334,8 +297,8 @@ async def _stats_prestataire(db: AsyncSession, org_id: int) -> DashboardStats:
         contenants_perdus=0,
         contenants_a_detruire=0,
         contenants_sortis_parc=0,
-        commandes_brouillon=commandes_brouillon,
-        commandes_en_cours=commandes_en_cours,
+        commandes_brouillon=order_counts.get(OrderStatus.brouillon, 0),
+        commandes_en_cours=sum(order_counts.get(s, 0) for s in _STATUTS_EN_COURS),
         commandes_livrees_ce_mois=commandes_livrees_ce_mois,
         commandes_du_jour=commandes_du_jour,
         dernieres_commandes=dernieres,

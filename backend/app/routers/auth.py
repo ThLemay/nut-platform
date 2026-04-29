@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +19,6 @@ class UserCreate(BaseModel):
     surname: str
     email: EmailStr
     password: str
-    role: UserRole = UserRole.consommateur
 
 class UserResponse(BaseModel):
     id: int
@@ -28,6 +29,13 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class UserUpdate(BaseModel):
+    firstname:    Optional[str]      = None
+    surname:      Optional[str]      = None
+    phone_number: Optional[str]      = None
+    email:        Optional[EmailStr] = None
+    password:     Optional[str]      = None
 
 class Token(BaseModel):
     access_token: str
@@ -50,7 +58,7 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
         surname=user_in.surname,
         email=user_in.email,
         hashed_password=hash_password(user_in.password),
-        role=user_in.role,
+        role=UserRole.consommateur,
     )
     db.add(user)
     await db.commit()
@@ -72,10 +80,52 @@ async def login(
             detail="Email ou mot de passe incorrect",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = create_access_token({"sub": str(user.id), "role": user.role})
+    token = create_access_token({
+        "sub": str(user.id),
+        "tv": user.token_version,
+    })
     return {"access_token": token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserResponse)
 async def me(current_user: User = Depends(get_current_user)):
     """Retourne l'utilisateur actuellement connecté."""
     return current_user
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    payload: UserUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Met à jour le profil de l'utilisateur connecté."""
+    if payload.email is not None and payload.email != current_user.email:
+        conflict = await db.execute(select(User).where(User.email == payload.email))
+        if conflict.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Cet email est déjà utilisé",
+            )
+
+    for field in ("firstname", "surname", "phone_number", "email"):
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(current_user, field, value)
+
+    if payload.password is not None:
+        current_user.hashed_password = hash_password(payload.password)
+        # Changement de password → invalide tous les tokens existants
+        current_user.token_version += 1
+
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
+
+
+@router.post("/logout", status_code=204)
+async def logout(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Révoque tous les tokens existants de l'utilisateur."""
+    current_user.token_version += 1
+    await db.commit()

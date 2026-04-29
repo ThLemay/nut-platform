@@ -26,9 +26,11 @@ class User(Base):
     phone_number    = Column(String(20))
     role            = Column(SAEnum(UserRole), nullable=False, default=UserRole.consommateur)
     status          = Column(SAEnum(UserStatus), nullable=False, default=UserStatus.active)
-    id_organization = Column(BigInteger, ForeignKey("organization.id"), nullable=True)
+    id_organization = Column(BigInteger, ForeignKey("organization.id"), nullable=True, index=True)
     creation_date   = Column(DateTime(timezone=True), server_default=func.now())
     last_login      = Column(DateTime(timezone=True))
+    # Incrémenté à chaque logout / changement de password / ban → invalide tous les tokens existants.
+    token_version   = Column(Integer, nullable=False, default=0, server_default="0")
 
     # Relations
     organization = relationship("Organization", back_populates="users")

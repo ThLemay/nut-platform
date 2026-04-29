@@ -116,7 +116,7 @@ async def create_container(
 async def create_containers_batch(
     payload: ContainerBatchCreate,
     db: AsyncSession = Depends(get_db),
-    _: object = Depends(require_role(UserRole.admin_nut)),
+    current_user: User = Depends(require_role(UserRole.admin_nut)),
 ):
     nut_org_id = await _get_nut_org_id(db)
 
@@ -153,7 +153,7 @@ async def create_containers_batch(
     stock = Stock(
         name=stock_name,
         status=StockStatus.en_cours,
-        id_owner_organization=nut_org_id,
+        id_owner_organization=current_user.id_organization,
     )
     db.add(stock)
     await db.flush()
@@ -218,6 +218,11 @@ async def update_container_status(
         beneficiaire = benef_result.scalar_one_or_none()
         if not beneficiaire:
             raise HTTPException(status_code=404, detail="Utilisateur bénéficiaire introuvable")
+        if beneficiaire.role != UserRole.consommateur:
+            raise HTTPException(
+                status_code=400,
+                detail="Le bénéficiaire des crédits doit être un consommateur",
+            )
 
         # 1. Config spécifique à l'orga du gestionnaire qui scanne
         config = None

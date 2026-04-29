@@ -28,6 +28,15 @@ def _require_admin_or_own_org(current_user: User, org_id: int):
     raise HTTPException(status_code=403, detail="Accès refusé")
 
 
+# Champs réservés à admin_nut sur PATCH /organizations/{id}
+_ADMIN_ONLY_FIELDS = frozenset({
+    "siren", "siret", "status",
+    "is_food_provider", "is_cont_washer", "is_cont_transporter",
+    "is_cont_stockeur", "is_cont_recycleur", "is_cont_destructeur",
+    "is_cont_provider",
+})
+
+
 # ── GET /organizations ──────────────────────────────────────────────
 
 @router.get("", response_model=list[OrganizationOut])
@@ -121,7 +130,17 @@ async def update_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organisation introuvable")
 
-    for field, value in payload.model_dump(exclude_none=True).items():
+    data = payload.model_dump(exclude_none=True)
+
+    if current_user.role != UserRole.admin_nut:
+        forbidden = _ADMIN_ONLY_FIELDS & data.keys()
+        if forbidden:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Champs réservés admin_nut : {sorted(forbidden)}",
+            )
+
+    for field, value in data.items():
         setattr(org, field, value)
 
     await db.commit()
@@ -164,6 +183,8 @@ async def add_member(
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur introuvable")
+    if user.role == UserRole.admin_nut:
+        raise HTTPException(status_code=400, detail="Impossible d'ajouter un admin_nut à une organisation")
     if user.id_organization is not None:
         raise HTTPException(status_code=400, detail="Utilisateur déjà membre d'une organisation")
 

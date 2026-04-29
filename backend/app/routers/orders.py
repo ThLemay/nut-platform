@@ -17,6 +17,7 @@ from app.schemas.order import (
     OrderCreate, OrderUpdate, OrderOut,
     OrderAssign, TransportSlotsCreate,
 )
+from app.routers.notifications import create_notification
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -55,6 +56,19 @@ async def create_order(
 ):
     if current_user.role == UserRole.consommateur:
         raise HTTPException(status_code=403, detail="Accès refusé aux consommateurs")
+
+    # Non-admin : id_client doit être l'organisation de l'utilisateur
+    if current_user.role != UserRole.admin_nut:
+        if current_user.id_organization is None:
+            raise HTTPException(
+                status_code=403,
+                detail="Aucune organisation associée à votre compte",
+            )
+        if payload.id_client != current_user.id_organization:
+            raise HTTPException(
+                status_code=403,
+                detail="Vous ne pouvez créer une commande que pour votre propre organisation",
+            )
 
     order = Order(
         order_type=payload.order_type,
@@ -185,6 +199,21 @@ async def broadcast_order(
         raise HTTPException(status_code=400, detail="Commande déjà envoyée")
 
     order.status = OrderStatus.envoyee
+    await db.flush()
+
+    # Notifier les opérateurs et gestionnaires disponibles
+    targets = await db.execute(
+        select(User).where(
+            User.role.in_([UserRole.operateur, UserRole.gestionnaire_organisation])
+        )
+    )
+    for u in targets.scalars().all():
+        await create_notification(
+            db, u.id, "commande",
+            f"Nouvelle commande disponible #{order.id}",
+            id_related_order=order.id,
+        )
+
     await db.commit()
     return await _get_order_full(db, order_id)
 
@@ -214,6 +243,22 @@ async def accept_order(
 
     order.id_provider = current_user.id_organization
     order.status = OrderStatus.acceptee
+    await db.flush()
+
+    # Notifier les gestionnaires du client
+    client_users = await db.execute(
+        select(User).where(
+            User.id_organization == order.id_client,
+            User.role == UserRole.gestionnaire_organisation,
+        )
+    )
+    for u in client_users.scalars().all():
+        await create_notification(
+            db, u.id, "commande",
+            f"Votre commande #{order.id} a été acceptée",
+            id_related_order=order.id,
+        )
+
     await db.commit()
     return await _get_order_full(db, order_id)
 
@@ -317,5 +362,22 @@ async def accept_slot(
 
     slot.is_accepted = True
     order.transport.accepted_slot_id = slot_id
+    await db.flush()
+
+    # Notifier les gestionnaires du prestataire
+    if order.id_provider is not None:
+        provider_users = await db.execute(
+            select(User).where(
+                User.id_organization == order.id_provider,
+                User.role == UserRole.gestionnaire_organisation,
+            )
+        )
+        for u in provider_users.scalars().all():
+            await create_notification(
+                db, u.id, "commande",
+                f"Créneau de transport confirmé pour la commande #{order.id}",
+                id_related_order=order.id,
+            )
+
     await db.commit()
     return await _get_order_full(db, order_id)
