@@ -1,38 +1,15 @@
-from typing import Optional, Any
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from typing import Optional
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_admin_or_gestionnaire
 from app.models.user import User, UserRole
 from app.models.event_log import EventLog, EventType, EntityType
+from app.schemas.event import EventLogOut
 
 router = APIRouter(prefix="/events", tags=["events"])
-
-
-class EventLogOut(BaseModel):
-    id: int
-    created_at: datetime
-    entity_type: EntityType
-    entity_id: int
-    event_type: EventType
-    old_value: Optional[Any]
-    new_value: Optional[Any]
-    note: Optional[str]
-    meta: Optional[Any]
-    id_user: Optional[int]
-    id_org: Optional[int]
-    id_place: Optional[int]
-
-    model_config = {"from_attributes": True}
-
-
-def _require_admin_or_gestionnaire(current_user: User):
-    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
 
 
 @router.get("", response_model=list[EventLogOut])
@@ -43,10 +20,8 @@ async def list_events(
     id_user: Optional[int] = Query(None),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     stmt = select(EventLog).order_by(EventLog.created_at.desc()).limit(limit)
 
     # Filtre automatique sur l'orga pour les gestionnaires

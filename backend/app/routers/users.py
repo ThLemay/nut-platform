@@ -3,17 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_admin
 from app.core.security import hash_password
-from app.models.user import User, UserRole, UserStatus
+from app.models.user import User, UserStatus
 from app.schemas.user import UserOut, UserCreate, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
-
-
-def _require_admin(current_user: User):
-    if current_user.role != UserRole.admin_nut:
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut")
 
 
 # ── GET /users ──────────────────────────────────────────────────────
@@ -21,9 +16,8 @@ def _require_admin(current_user: User):
 @router.get("", response_model=list[UserOut])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(User).order_by(User.id))
     return result.scalars().all()
 
@@ -34,9 +28,8 @@ async def list_users(
 async def get_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -50,9 +43,8 @@ async def get_user(
 async def create_user(
     payload: UserCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(User).where(User.email == payload.email))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
@@ -80,9 +72,8 @@ async def update_user(
     user_id: int,
     payload: UserUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -122,9 +113,8 @@ async def update_user(
 async def delete_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:

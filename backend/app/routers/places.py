@@ -5,28 +5,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import (
+    get_current_user,
+    require_admin,
+    require_admin_or_gestionnaire,
+    require_not_consommateur,
+)
 from app.models.user import User, UserRole
 from app.models.place import Place, PlaceTypeEnum
 from app.models.organization import Address
 from app.schemas.place import PlaceCreate, PlaceUpdate, PlaceOut
 
 router = APIRouter(prefix="/places", tags=["places"])
-
-
-def _require_not_consommateur(current_user: User):
-    if current_user.role == UserRole.consommateur:
-        raise HTTPException(status_code=403, detail="Accès refusé")
-
-
-def _require_admin_or_gestionnaire(current_user: User):
-    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
-
-
-def _require_admin(current_user: User):
-    if current_user.role != UserRole.admin_nut:
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut")
 
 
 def _build_place_select():
@@ -50,10 +40,8 @@ async def list_places(
     place_type: Optional[PlaceTypeEnum] = Query(None),
     id_organization: Optional[int] = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_consommateur),
 ):
-    _require_not_consommateur(current_user)
-
     stmt = _build_place_select()
     if place_type is not None:
         stmt = stmt.where(Place.place_type == place_type)
@@ -71,10 +59,8 @@ async def list_places(
 async def get_place(
     place_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_not_consommateur),
 ):
-    _require_not_consommateur(current_user)
-
     result = await db.execute(_build_place_select().where(Place.id == place_id))
     place = result.scalar_one_or_none()
     if not place:
@@ -88,17 +74,15 @@ async def get_place(
 async def create_place(
     payload: PlaceCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     id_address = None
     if payload.address:
         addr = Address(
-            address=payload.address.get("address"),
-            city=payload.address.get("city"),
-            zipcode=payload.address.get("zipcode"),
-            country=payload.address.get("country"),
+            address=payload.address.address,
+            city=payload.address.city,
+            zipcode=payload.address.zipcode,
+            country=payload.address.country,
         )
         db.add(addr)
         await db.flush()
@@ -184,10 +168,8 @@ async def update_place(
 async def delete_place(
     place_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
-
     result = await db.execute(select(Place).where(Place.id == place_id))
     place = result.scalar_one_or_none()
     if not place:

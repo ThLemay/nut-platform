@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.database import get_db
 from app.core.security import decode_token
-from app.models.user import User, UserStatus
+from app.models.user import User, UserRole, UserStatus
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -61,3 +61,26 @@ def require_role(*roles):
             )
         return current_user
     return role_checker
+
+
+# ── Helpers d'autorisation standardisés ────────────────────────────────────
+# À utiliser comme dépendance directe dans les signatures de handlers :
+#     current_user: User = Depends(require_admin)
+# Centralisé ici pour éviter les duplications dans chaque router.
+
+def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.admin_nut:
+        raise HTTPException(status_code=403, detail="Accès réservé admin_nut")
+    return current_user
+
+
+def require_admin_or_gestionnaire(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
+        raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
+    return current_user
+
+
+def require_not_consommateur(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role == UserRole.consommateur:
+        raise HTTPException(status_code=403, detail="Accès refusé")
+    return current_user

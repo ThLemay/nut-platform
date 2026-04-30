@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Bell } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { getNotifications, markRead, markAllRead } from '../../lib/api/notifications'
+import { getNotifications, markRead, markAllRead, type NotificationItem } from '../../lib/api/notifications'
+import api from '../../lib/api'
 import useNotificationStore from '../../store/notificationStore'
 import useAuthStore from '../../store/authStore'
 
@@ -32,11 +33,60 @@ export default function NotificationBell() {
     }
   }
 
+  /* ── SSE avec fallback polling 30s ─────────────────────────────────────────
+     EventSource ne supporte pas les headers custom : le JWT est passé en
+     query param. Si le flux échoue (proxy, réseau, etc.), on bascule sur le
+     polling classique pour rester fonctionnel. */
   useEffect(() => {
-    fetchNotifs()
-    const timer = setInterval(fetchNotifs, 30000)
-    return () => clearInterval(timer)
-  }, [isAuthenticated])
+    if (!isAuthenticated) return
+
+    const token = localStorage.getItem('nut_token')
+    if (!token) return
+
+    let eventSource: EventSource | null = null
+    let pollTimer: ReturnType<typeof setInterval> | null = null
+    let cancelled = false
+
+    const startPolling = () => {
+      if (pollTimer || cancelled) return
+      fetchNotifs()
+      pollTimer = setInterval(fetchNotifs, 30000)
+    }
+
+    const baseURL = api.defaults.baseURL ?? ''
+    const url = `${baseURL}/notifications/stream?token=${encodeURIComponent(token)}`
+
+    try {
+      eventSource = new EventSource(url)
+
+      eventSource.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data) as NotificationItem[]
+          setNotifications(data)
+        } catch {
+          // payload illisible — on ignore ce tick
+        }
+      }
+
+      eventSource.onerror = () => {
+        // Échec / déconnexion : on coupe SSE et on bascule sur le polling.
+        if (eventSource) {
+          eventSource.close()
+          eventSource = null
+        }
+        startPolling()
+      }
+    } catch {
+      // EventSource indisponible (très rare) → fallback direct.
+      startPolling()
+    }
+
+    return () => {
+      cancelled = true
+      if (eventSource) eventSource.close()
+      if (pollTimer) clearInterval(pollTimer)
+    }
+  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {

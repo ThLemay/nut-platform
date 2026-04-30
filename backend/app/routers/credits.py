@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_admin, require_admin_or_gestionnaire
 from app.models.user import User, UserRole
 from app.models.credit import Credit, CreditConfig
 from app.models.event_log import EventLog, EventType, EntityType
@@ -17,16 +17,6 @@ router = APIRouter(prefix="/credits", tags=["credits"])
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _require_admin(current_user: User):
-    if current_user.role != UserRole.admin_nut:
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut")
-
-
-def _require_admin_or_gestionnaire(current_user: User):
-    if current_user.role not in (UserRole.admin_nut, UserRole.gestionnaire_organisation):
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut ou gestionnaire_organisation")
-
 
 async def _get_or_create_credit(db: AsyncSession, user_id: int) -> Credit:
     result = await db.execute(select(Credit).where(Credit.id_user == user_id))
@@ -46,10 +36,8 @@ async def _get_or_create_credit(db: AsyncSession, user_id: int) -> Credit:
 async def create_credit_config(
     payload: CreditConfigCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     # Gestionnaire ne peut configurer que sa propre orga
     if current_user.role == UserRole.gestionnaire_organisation:
         if current_user.id_organization != payload.id_organization:
@@ -85,10 +73,8 @@ async def create_credit_config(
 async def list_credit_configs(
     id_organization: int | None = Query(None),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     stmt = select(CreditConfig)
 
     if current_user.role == UserRole.gestionnaire_organisation:
@@ -107,10 +93,8 @@ async def update_credit_config(
     config_id: int,
     payload: CreditConfigUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     result = await db.execute(select(CreditConfig).where(CreditConfig.id == config_id))
     config = result.scalar_one_or_none()
     if config is None:
@@ -145,10 +129,8 @@ async def get_my_credits(
 async def get_user_credits(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
-
     from app.models.user import User as UserModel
     result = await db.execute(select(UserModel).where(UserModel.id == user_id))
     if result.scalar_one_or_none() is None:
@@ -164,9 +146,8 @@ async def get_user_credits(
 @router.get("/users/{user_id}/transactions")
 async def get_user_transactions(
     user_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin_or_gestionnaire),
 ):
-    _require_admin_or_gestionnaire(current_user)
     return RedirectResponse(
         url=f"/events?entity_type=credit&id_user={user_id}",
         status_code=status.HTTP_307_TEMPORARY_REDIRECT,
@@ -180,10 +161,8 @@ async def adjust_credits(
     user_id: int,
     payload: CreditAdjust,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
-
     from app.models.user import User as UserModel
     result = await db.execute(select(UserModel).where(UserModel.id == user_id))
     if result.scalar_one_or_none() is None:

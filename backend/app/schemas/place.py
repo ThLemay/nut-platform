@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from app.models.place import PlaceTypeEnum
-from app.schemas.organization import AddressOut
+from app.schemas.organization import AddressCreate, AddressOut
 
 
 class PlaceCreate(BaseModel):
@@ -13,7 +13,7 @@ class PlaceCreate(BaseModel):
     latitude: Optional[Decimal] = Field(None, description="Latitude GPS")
     longitude: Optional[Decimal] = Field(None, description="Longitude GPS")
     volume_capacity: Optional[Decimal] = Field(None, description="Capacité de stockage en litres")
-    address: Optional[dict] = Field(None, description="Adresse optionnelle : {address, city, zipcode, country}")
+    address: Optional[AddressCreate] = Field(None, description="Adresse optionnelle")
 
 
 class PlaceUpdate(BaseModel):

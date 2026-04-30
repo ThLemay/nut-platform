@@ -3,10 +3,11 @@ import { X, Scan, Plus, Trash2, AlertCircle, CheckCircle2, Loader2 } from 'lucid
 import { Html5Qrcode } from 'html5-qrcode'
 import { getContenant, updateContenantStatus, type Container } from '../lib/api/contenants'
 import { getStocks, getStockContenants, type StockItem } from '../lib/api/stocks'
+import { getContainerStatuses } from '../lib/api/references'
 import './ScanRapide.css'
 
-/* ── Constants ──────────────────────────────────────────────── */
-const TRANSITIONS: Record<string, string[]> = {
+/* ── Fallback constants (utilisés si l'API /ref/container-statuses échoue) ──── */
+const FALLBACK_TRANSITIONS: Record<string, string[]> = {
   propre:      ['en_consigne', 'en_transit'],
   en_consigne: ['sale'],
   sale:        ['en_lavage', 'en_transit', 'a_detruire'],
@@ -17,7 +18,7 @@ const TRANSITIONS: Record<string, string[]> = {
   detruit:     [],
 }
 
-const STATUS_LABELS: Record<string, string> = {
+const FALLBACK_STATUS_LABELS: Record<string, string> = {
   propre:      'Propre',
   en_consigne: 'En consigne',
   sale:        'Sale',
@@ -44,6 +45,9 @@ export default function ScanRapide({ onClose }: Props) {
   const [applying,   setApplying]    = useState(false)
   const [progress,   setProgress]    = useState(0)
   const [toast,      setToast]       = useState<{ msg: string; kind: 'success' | 'error' } | null>(null)
+  const [statusTransitions, setStatusTransitions] = useState<Record<string, string[]>>(FALLBACK_TRANSITIONS)
+  const [statusLabels,      setStatusLabels]      = useState<Record<string, string>>(FALLBACK_STATUS_LABELS)
+  const [refsLoading,       setRefsLoading]       = useState(true)
 
   /* Refs */
   const contenantsRef  = useRef<Container[]>([])
@@ -59,7 +63,7 @@ export default function ScanRapide({ onClose }: Props) {
   const uniqueStatuses = [...new Set(contenants.map(c => c.status))]
   const mixedStatuses  = uniqueStatuses.length > 1
   const commonStatus   = !mixedStatuses && uniqueStatuses.length === 1 ? uniqueStatuses[0] : null
-  const transitions    = commonStatus ? (TRANSITIONS[commonStatus] ?? []) : []
+  const transitions    = commonStatus ? (statusTransitions[commonStatus] ?? []) : []
 
   /* ── Helpers ── */
   const showToast = (msg: string, kind: 'success' | 'error') => {
@@ -124,6 +128,30 @@ export default function ScanRapide({ onClose }: Props) {
   /* ── Load stocks (silent fail if endpoint missing) ── */
   useEffect(() => {
     getStocks().then(setStocks).catch(() => {})
+  }, [])
+
+  /* ── Load container statuses + transitions (source unique backend) ── */
+  useEffect(() => {
+    let cancelled = false
+    getContainerStatuses()
+      .then(refs => {
+        if (cancelled) return
+        const transitionsMap: Record<string, string[]> = {}
+        const labelsMap: Record<string, string> = {}
+        for (const r of refs) {
+          transitionsMap[r.status] = r.allowed_transitions
+          labelsMap[r.status] = r.label
+        }
+        setStatusTransitions(transitionsMap)
+        setStatusLabels(labelsMap)
+      })
+      .catch(() => {
+        // Fallback : on garde les constantes locales déjà initialisées.
+      })
+      .finally(() => {
+        if (!cancelled) setRefsLoading(false)
+      })
+    return () => { cancelled = true }
   }, [])
 
   /* ── Reset action when common status changes ── */
@@ -297,7 +325,7 @@ export default function ScanRapide({ onClose }: Props) {
                     <span className="sr-uid">{c.uid.slice(0, 8)}</span>
                     <span className="sr-type-name">{c.cont_type_name ?? '—'}</span>
                     <span className={`sr-badge sr-badge-${c.status}`}>
-                      {STATUS_LABELS[c.status] ?? c.status}
+                      {statusLabels[c.status] ?? c.status}
                     </span>
                     <button
                       type="button"
@@ -318,7 +346,11 @@ export default function ScanRapide({ onClose }: Props) {
             <div className="sr-section">
               <div className="sr-section-title">Action</div>
 
-              {mixedStatuses ? (
+              {refsLoading ? (
+                <p className="sr-status-text">
+                  <Loader2 size={14} className="sr-spin" /> Chargement des transitions…
+                </p>
+              ) : mixedStatuses ? (
                 <div className="sr-warning">
                   <AlertCircle size={16} />
                   Statuts mixtes — sélectionnez des contenants avec le même statut.
@@ -326,7 +358,7 @@ export default function ScanRapide({ onClose }: Props) {
               ) : (
                 <>
                   <p className="sr-status-text">
-                    Statut actuel : <strong>{STATUS_LABELS[commonStatus!] ?? commonStatus}</strong>
+                    Statut actuel : <strong>{statusLabels[commonStatus!] ?? commonStatus}</strong>
                     {' '}({contenants.length} contenant(s))
                   </p>
 
@@ -343,7 +375,7 @@ export default function ScanRapide({ onClose }: Props) {
                           disabled={applying}
                         >
                           {transitions.map(t => (
-                            <option key={t} value={t}>{STATUS_LABELS[t] ?? t}</option>
+                            <option key={t} value={t}>{statusLabels[t] ?? t}</option>
                           ))}
                         </select>
                       </div>

@@ -8,11 +8,11 @@ from sqlalchemy import select
 from sqlalchemy import func as safunc
 from sqlalchemy.orm import selectinload
 
+from app.core.config import settings
 from app.db.database import get_db
 from app.dependencies import require_role, get_current_user
 from app.models.user import UserRole, User
 from app.models.container import Container, ContainerStatus, ContainerType, TRANSITIONS_AUTORISEES
-from app.models.organization import Organization
 from app.models.stock import Stock, StockStatus, StockContainer
 from app.models.credit import Credit, CreditConfig
 from app.models.event_log import EventLog, EventType, EntityType
@@ -41,13 +41,6 @@ def require_not_consommateur():
             raise HTTPException(status_code=403, detail="Accès refusé")
         return current_user
     return check
-
-
-async def _get_nut_org_id(db: AsyncSession) -> int | None:
-    """Retourne l'id de l'organisation 'NUT', ou None si absente."""
-    result = await db.execute(select(Organization).where(Organization.name == "NUT"))
-    org = result.scalar_one_or_none()
-    return org.id if org else None
 
 
 # ── GET /containers ─────────────────────────────────────────────────
@@ -94,7 +87,7 @@ async def create_container(
     db: AsyncSession = Depends(get_db),
     _: object = Depends(require_role(UserRole.admin_nut)),
 ):
-    nut_org_id = await _get_nut_org_id(db)
+    nut_org_id = settings.NUT_ORG_ID
 
     container = Container(
         uid=payload.uid or str(uuid.uuid4()),
@@ -118,7 +111,7 @@ async def create_containers_batch(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role(UserRole.admin_nut)),
 ):
-    nut_org_id = await _get_nut_org_id(db)
+    nut_org_id = settings.NUT_ORG_ID
 
     containers = [
         Container(
@@ -238,10 +231,8 @@ async def update_container_status(
         # 2. Fallback sur config globale NUT
         if config is None:
             nut_config_result = await db.execute(
-                select(CreditConfig)
-                .join(Organization, CreditConfig.id_organization == Organization.id)
-                .where(
-                    Organization.name == "NUT",
+                select(CreditConfig).where(
+                    CreditConfig.id_organization == settings.NUT_ORG_ID,
                     CreditConfig.id_cont_type == container.id_cont_type,
                 )
             )

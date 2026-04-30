@@ -2,27 +2,25 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_not_consommateur
 from app.models.container import Container, ContainerStatus, TRANSITIONS_AUTORISEES
 from app.models.event_log import EntityType, EventLog, EventType
 from app.models.stock import Stock, StockContainer, StockStatus
 from app.models.user import User, UserRole
+from app.schemas.stock import (
+    StockCreate, StockUpdate, StockContainerOut, StockOut,
+    AddContainerPayload, BulkStatusPayload, BulkStatusResult,
+)
 
 router = APIRouter(prefix="/stocks", tags=["stocks"])
 
 
 # ── Permission ───────────────────────────────────────────────────────────────
-
-def _require_access(current_user: User) -> None:
-    if current_user.role == UserRole.consommateur:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
-
 
 def _require_stock_access(stock: Stock, current_user: User) -> None:
     """Admin OK ; sinon le stock doit appartenir à l'organisation de l'utilisateur."""
@@ -33,57 +31,6 @@ def _require_stock_access(stock: Stock, current_user: User) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Accès refusé à ce stock",
         )
-
-
-# ── Schemas ──────────────────────────────────────────────────────────────────
-
-class StockCreate(BaseModel):
-    name: str
-    note: Optional[str] = None
-    id_place: Optional[int] = None
-
-
-class StockUpdate(BaseModel):
-    name:   Optional[str]         = None
-    status: Optional[StockStatus] = None
-    note:   Optional[str]         = None
-
-
-class StockContainerOut(BaseModel):
-    id:           int
-    uid:          str
-    id_cont_type: int
-    status:       ContainerStatus
-    added_at:     datetime
-    model_config = {"from_attributes": True}
-
-
-class StockOut(BaseModel):
-    id:                    int
-    name:                  Optional[str]
-    status:                StockStatus
-    note:                  Optional[str]
-    id_place:              Optional[int]
-    id_order:              Optional[int]
-    id_owner_organization: Optional[int]
-    created_at:            Optional[datetime]
-    container_count:       int = 0
-    containers:            list[StockContainerOut] = []
-    model_config = {"from_attributes": True}
-
-
-class AddContainerPayload(BaseModel):
-    uid: str
-
-
-class BulkStatusPayload(BaseModel):
-    status: ContainerStatus
-    note:   Optional[str] = None
-
-
-class BulkStatusResult(BaseModel):
-    updated: int
-    skipped: int
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -138,10 +85,8 @@ async def list_stocks(
     status_filter:   Optional[StockStatus] = Query(None, alias="status"),
     id_organization: Optional[int]         = Query(None),
     db:              AsyncSession           = Depends(get_db),
-    current_user:    User                   = Depends(get_current_user),
+    current_user:    User                   = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
-
     stmt = select(Stock)
     if status_filter:
         stmt = stmt.where(Stock.status == status_filter)
@@ -190,9 +135,8 @@ async def list_stocks(
 async def get_stock(
     stock_id:     int,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock   = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
     entries = await _load_active_entries(db, stock_id)
@@ -205,9 +149,8 @@ async def get_stock(
 async def create_stock(
     payload:      StockCreate,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock = Stock(
         name=payload.name,
         note=payload.note,
@@ -227,9 +170,8 @@ async def update_stock(
     stock_id:     int,
     payload:      StockUpdate,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
 
@@ -249,9 +191,8 @@ async def update_stock(
 async def delete_stock(
     stock_id:     int,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock   = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
     entries = await _load_active_entries(db, stock_id)
@@ -271,9 +212,8 @@ async def add_container(
     stock_id:     int,
     payload:      AddContainerPayload,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
 
@@ -312,9 +252,8 @@ async def remove_container(
     stock_id:     int,
     uid:          str,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
 
@@ -351,9 +290,8 @@ async def bulk_status_change(
     stock_id:     int,
     payload:      BulkStatusPayload,
     db:           AsyncSession = Depends(get_db),
-    current_user: User         = Depends(get_current_user),
+    current_user: User         = Depends(require_not_consommateur),
 ):
-    _require_access(current_user)
     stock = await _get_stock_or_404(db, stock_id)
     _require_stock_access(stock, current_user)
     entries = await _load_active_entries(db, stock_id)

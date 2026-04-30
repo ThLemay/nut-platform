@@ -48,6 +48,7 @@ class OrganizationUpdate(BaseModel):
     is_cont_recycleur: Optional[bool] = None
     is_cont_destructeur: Optional[bool] = None
     is_cont_provider: Optional[bool] = None
+    address: Optional[AddressCreate] = None
 
 
 class OrganizationOut(BaseModel):

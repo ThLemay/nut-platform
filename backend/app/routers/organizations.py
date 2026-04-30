@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.db.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_admin
 from app.models.user import User, UserRole
 from app.models.organization import Organization, Address
 from app.schemas.organization import (
@@ -15,12 +15,7 @@ from app.schemas.organization import (
 router = APIRouter(prefix="/organizations", tags=["organizations"])
 
 
-def _require_admin(current_user: User):
-    if current_user.role != UserRole.admin_nut:
-        raise HTTPException(status_code=403, detail="Accès réservé admin_nut")
-
-
-def _require_admin_or_own_org(current_user: User, org_id: int):
+def _check_org_access(current_user: User, org_id: int):
     if current_user.role == UserRole.admin_nut:
         return
     if current_user.role == UserRole.gestionnaire_organisation and current_user.id_organization == org_id:
@@ -42,9 +37,8 @@ _ADMIN_ONLY_FIELDS = frozenset({
 @router.get("", response_model=list[OrganizationOut])
 async def list_organizations(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(Organization).options(selectinload(Organization.address)))
     return result.scalars().all()
 
@@ -57,7 +51,7 @@ async def get_organization(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin_or_own_org(current_user, org_id)
+    _check_org_access(current_user, org_id)
     result = await db.execute(
         select(Organization).options(selectinload(Organization.address)).where(Organization.id == org_id)
     )
@@ -73,10 +67,8 @@ async def get_organization(
 async def create_organization(
     payload: OrganizationCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
-
     id_address = None
     if payload.address:
         addr = Address(
@@ -122,7 +114,7 @@ async def update_organization(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin_or_own_org(current_user, org_id)
+    _check_org_access(current_user, org_id)
     result = await db.execute(
         select(Organization).options(selectinload(Organization.address)).where(Organization.id == org_id)
     )
@@ -140,8 +132,23 @@ async def update_organization(
                 detail=f"Champs réservés admin_nut : {sorted(forbidden)}",
             )
 
+    # `address` est une sous-ressource — la sortir avant l'update des colonnes scalaires.
+    data.pop("address", None)
     for field, value in data.items():
         setattr(org, field, value)
+
+    if payload.address is not None:
+        if org.id_address is not None:
+            addr_result = await db.execute(select(Address).where(Address.id == org.id_address))
+            addr = addr_result.scalar_one_or_none()
+            if addr:
+                for field, value in payload.address.model_dump(exclude_none=True).items():
+                    setattr(addr, field, value)
+        else:
+            addr = Address(**payload.address.model_dump(exclude_none=True))
+            db.add(addr)
+            await db.flush()
+            org.id_address = addr.id
 
     await db.commit()
     result = await db.execute(
@@ -157,9 +164,8 @@ async def update_organization(
 async def delete_organization(
     org_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
 ):
-    _require_admin(current_user)
     result = await db.execute(select(Organization).where(Organization.id == org_id))
     org = result.scalar_one_or_none()
     if not org:
@@ -177,7 +183,7 @@ async def add_member(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin_or_own_org(current_user, org_id)
+    _check_org_access(current_user, org_id)
 
     result = await db.execute(select(User).where(User.id == payload.user_id))
     user = result.scalar_one_or_none()
@@ -202,7 +208,7 @@ async def remove_member(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin_or_own_org(current_user, org_id)
+    _check_org_access(current_user, org_id)
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

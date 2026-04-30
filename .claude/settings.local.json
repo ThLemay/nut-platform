@@ -42,7 +42,8 @@
       "Bash(curl -s -H \"Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6ImFkbWluX251dCIsImV4cCI6MTc3NzAyMDU1M30._xYyP3JrLqonmPFhv_Co4R6RVVcw-mSDHQ-PMhmCefI\" http://localhost:8000/dashboard/stats)",
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@nut-green.fr\",\"password\":\"admin\"}')",
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=admin@nut-green.fr&password=admin\")",
-      "Bash(curl -s http://localhost:8000/docs)"
+      "Bash(curl -s http://localhost:8000/docs)",
+      "Bash(xargs git *)"
     ]
   }
 }
