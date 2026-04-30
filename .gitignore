@@ -1,5 +1,41 @@
-
+# Python
 **/__pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Secrets & env
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Tokens / credentials dumps
+token.*
+*.token
+secrets/
+
+# Generated OpenAPI dumps
+openapi.json
+openapi_live.json
+
+# Frontend artifacts (frontend/.gitignore covers node_modules + dist already)
+*.local
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local Claude / tooling state
+.claude/settings.local.json

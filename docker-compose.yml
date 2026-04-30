@@ -5,9 +5,9 @@ services:
     container_name: nut_db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: nut_user
-      POSTGRES_PASSWORD: nut_password
-      POSTGRES_DB: nut_dev
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     volumes:
       - nut_db_data:/var/lib/postgresql/data
     ports:
@@ -18,8 +18,8 @@ services:
       container_name: nut_pgadmin
       restart: unless-stopped
       environment:
-        PGADMIN_DEFAULT_EMAIL: admin@nut.com
-        PGADMIN_DEFAULT_PASSWORD: admin
+        PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:?PGADMIN_DEFAULT_EMAIL is required}
+        PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?PGADMIN_DEFAULT_PASSWORD is required}
       ports:
         - "5050:80"
       depends_on:
