@@ -43,7 +43,17 @@
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@nut-green.fr\",\"password\":\"admin\"}')",
       "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/x-www-form-urlencoded\" -d \"username=admin@nut-green.fr&password=admin\")",
       "Bash(curl -s http://localhost:8000/docs)",
-      "Bash(xargs git *)"
+      "Bash(xargs git *)",
+      "Bash(xargs ls *)",
+      "Bash(python *)",
+      "Bash(openssl rand *)",
+      "Bash(python3 -c \"import secrets; print\\(secrets.token_urlsafe\\(48\\)\\)\")",
+      "Bash(git rm *)",
+      "Bash(git check-ignore *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git filter-repo *)",
+      "Bash(pip show *)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  Box, ShoppingBag, Truck, Sparkles, Leaf,
+  Box, ShoppingBag, Truck, Sparkles, Leaf, UtensilsCrossed,
   ClipboardList, Building2, Users, RefreshCw,
   AlertCircle, Loader2,
 } from 'lucide-react'
@@ -11,10 +11,11 @@ import './Dashboard.css'
 
 /* ── Container KPI cards ─────────────────────────────────────────────────── */
 const CONTAINER_CARDS = [
-  { key: 'contenants_propres'     as keyof DashboardStats, label: 'Propres',     Icon: Box,        color: '#22C55E' },
-  { key: 'contenants_en_consigne' as keyof DashboardStats, label: 'En consigne', Icon: ShoppingBag, color: '#3B82F6' },
-  { key: 'contenants_en_transit'  as keyof DashboardStats, label: 'En transit',  Icon: Truck,      color: '#F97316' },
-  { key: 'contenants_en_lavage'   as keyof DashboardStats, label: 'En lavage',   Icon: Sparkles,   color: '#A855F7' },
+  { key: 'contenants_propres'     as keyof DashboardStats, label: 'Propres',     Icon: Box,             color: '#22C55E' },
+  { key: 'contenants_en_consigne' as keyof DashboardStats, label: 'En consigne', Icon: ShoppingBag,     color: '#3B82F6' },
+  { key: 'contenants_sales'       as keyof DashboardStats, label: 'Sales',       Icon: UtensilsCrossed, color: '#F59E0B' },
+  { key: 'contenants_en_transit'  as keyof DashboardStats, label: 'En transit',  Icon: Truck,           color: '#F97316' },
+  { key: 'contenants_en_lavage'   as keyof DashboardStats, label: 'En lavage',   Icon: Sparkles,        color: '#A855F7' },
 ]
 
 /* ── Order status config ─────────────────────────────────────────────────── */
